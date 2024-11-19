@@ -94,12 +94,14 @@ func HandleStreamResponse(
 	for {
 		res, err := strm.Recv()
 		if errors.Is(err, io.EOF) {
+			log.Trace().Err(err).Msg("reached end of streaming response")
 			return nil
 		} else if err != nil {
 			return fmt.Errorf("stream response: %w", err)
 		}
 
-		_, err = fmt.Fprintf(writer, res.Choices[0].Delta.Content)
+		log.Trace().Msg("recieved stream chunk")
+		_, err = fmt.Fprint(writer, res.Choices[0].Delta.Content)
 		if err != nil {
 			return fmt.Errorf("write response: %w", err)
 		}
