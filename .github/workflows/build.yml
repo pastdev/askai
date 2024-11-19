@@ -86,12 +86,12 @@ jobs:
           export GOARCH=amd64
           export CGO_ENABLED=0
 
-          OUT_FILE="${RELEASE_DIR}/clconf-${PLATFORM}${EXTENSION}"
+          OUT_FILE="${RELEASE_DIR}/askai-${PLATFORM}${EXTENSION}"
           echo "Creating ${OUT_FILE} (${RELEASE_VERSION})"
           go build \
             -ldflags "-X github.com/pastdev/askai/cmd/askai/version.version=$RELEASE_VERSION" \
             -o "${OUT_FILE}" \
-            ./cmd/clconf
+            ./cmd/askai
 
           echo "::set-output name=${PLATFORM}-artifact::${OUT_FILE}"
         done
@@ -110,7 +110,7 @@ jobs:
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
         asset_path: ${{ steps.build.outputs.darwin-artifact }}
-        asset_name: clconf-darwin
+        asset_name: askai-darwin
         asset_content_type: application/octet-stream
     - if: ${{ steps.build.outputs.linux-artifact }}
       name: Upload linux release ${{ env.RELEASE_VERSION }}
@@ -118,7 +118,7 @@ jobs:
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
         asset_path: ${{ steps.build.outputs.linux-artifact }}
-        asset_name: clconf-linux
+        asset_name: askai-linux
         asset_content_type: application/octet-stream
     - if: ${{ steps.build.outputs.windows-artifact }}
       name: Upload windows release ${{ env.RELEASE_VERSION }}
@@ -126,5 +126,5 @@ jobs:
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
         asset_path: ${{ steps.build.outputs.windows-artifact }}
-        asset_name: clconf-windows.exe
+        asset_name: askai-windows.exe
         asset_content_type: application/octet-stream
