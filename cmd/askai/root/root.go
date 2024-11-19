@@ -16,6 +16,7 @@ func New() *cobra.Command {
 	cmd := cobra.Command{
 		Use:   "askai",
 		Short: `A tool for asking things of an AI.`,
+		//nolint: revive // required to match upstream signature
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			log.SetLevel(logLevel)
 			log.SetFormat(logFormat)

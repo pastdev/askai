@@ -34,7 +34,11 @@ func SendReply(
 		return fmt.Errorf("send: %w", err)
 	}
 
-	return conversation.UpdateResponse(buf.String())
+	err = conversation.UpdateResponse(buf.String())
+	if err != nil {
+		return fmt.Errorf("update response: %w", err)
+	}
+	return nil
 }
 
 func Send(
@@ -62,12 +66,16 @@ func HandleBufferResponse(
 	req openai.ChatCompletionRequest,
 	writer io.Writer,
 ) error {
-	resp, err := client.CreateChatCompletion(context.Background(), req)
+	resp, err := client.CreateChatCompletion(ctx, req)
 	if err != nil {
 		return fmt.Errorf("chat completion: %w", err)
 	}
 
-	fmt.Fprintln(writer, resp.Choices[0].Message.Content)
+	_, err = fmt.Fprintln(writer, resp.Choices[0].Message.Content)
+	if err != nil {
+		return fmt.Errorf("write response: %w", err)
+	}
+
 	return nil
 }
 
@@ -91,6 +99,9 @@ func HandleStreamResponse(
 			return fmt.Errorf("stream response: %w", err)
 		}
 
-		fmt.Fprintf(writer, res.Choices[0].Delta.Content)
+		_, err = fmt.Fprintf(writer, res.Choices[0].Delta.Content)
+		if err != nil {
+			return fmt.Errorf("write response: %w", err)
+		}
 	}
 }

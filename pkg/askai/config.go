@@ -125,6 +125,7 @@ func (c *Config) LoadFile(f string) error {
 	b, err := os.ReadFile(f)
 	if err != nil {
 		log.Debug().Str("file", f).Msg("config not found")
+		//nolint: nilerr // intentional ignore error
 		return nil
 	}
 

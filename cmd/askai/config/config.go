@@ -55,5 +55,9 @@ func (c *Config) NewClient() (*openai.Client, error) {
 		c.config = cfg
 	}
 
-	return c.config.NewClient(c.endpoint)
+	client, err := c.config.NewClient(c.endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("new client: %w", err)
+	}
+	return client, nil
 }
