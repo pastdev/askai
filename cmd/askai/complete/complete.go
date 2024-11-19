@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/pkg/askai"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 )
 
-func New(clientCfg *openai.ClientConfig) *cobra.Command {
+func New(cfg *config.Config) *cobra.Command {
 	var req openai.ChatCompletionRequest
 	var conversation string
 
@@ -18,7 +19,10 @@ func New(clientCfg *openai.ClientConfig) *cobra.Command {
 		Use:   "complete",
 		Short: `Ask CI to complete a chat`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := openai.NewClientWithConfig(*clientCfg)
+			client, err := cfg.NewClient()
+			if err != nil {
+				return fmt.Errorf("new client: %w", err)
+			}
 
 			ctx := context.Background()
 

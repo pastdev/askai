@@ -13,7 +13,7 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
-    steps: 
+    steps:
       - uses: actions/setup-go@v3
         with:
           go-version: 1.20
@@ -80,7 +80,7 @@ jobs:
           OUT_FILE="${RELEASE_DIR}/clconf-${PLATFORM}${EXTENSION}"
           echo "Creating ${OUT_FILE} (${RELEASE_VERSION})"
           go build \
-            -ldflags "-X github.com/pastdev/clconf/v3/pkg/cmd.version=$RELEASE_VERSION" \
+            -ldflags "-X github.com/pastdev/askai/cmd/askai/version.version=$RELEASE_VERSION" \
             -o "${OUT_FILE}" \
             ./cmd/clconf
 
