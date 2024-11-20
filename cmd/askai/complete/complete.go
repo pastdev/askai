@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"dario.cat/mergo"
 	"github.com/pastdev/askai/cmd/askai/config"
-	"github.com/pastdev/askai/pkg/askai"
+	"github.com/pastdev/askai/pkg/chatcompletion"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 )
@@ -20,20 +21,32 @@ func New(cfg *config.Config) *cobra.Command {
 		Short: `Ask CI to complete a chat`,
 		//nolint: revive // required to match upstream signature
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, err := cfg.NewClient()
+			endpoint, err := cfg.EndpointConfig()
 			if err != nil {
 				return fmt.Errorf("new client: %w", err)
 			}
 
+			client := endpoint.NewClient()
 			ctx := context.Background()
 
+			defaults := openai.ChatCompletionRequest{}
+			if endpoint.ChatCompletionDefaults != nil {
+				defaults = *endpoint.ChatCompletionDefaults
+			}
+
 			if conversation == "" {
-				err := askai.Send(ctx, client, req, os.Stdout)
+				err := mergo.Merge(&req, defaults)
+				if err != nil {
+					return fmt.Errorf("apply defaults: %w", err)
+				}
+				req.Messages = append(defaults.Messages, req.Messages...)
+
+				err = chatcompletion.Send(ctx, client, req, os.Stdout)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
 				}
 			} else {
-				conv, isNew, err := askai.LoadPersistentConversation(conversation)
+				conv, isNew, err := chatcompletion.LoadPersistentConversation(conversation, *endpoint.ChatCompletionDefaults)
 				if err != nil {
 					return fmt.Errorf("load %s: %w", conversation, err)
 				}
@@ -41,7 +54,13 @@ func New(cfg *config.Config) *cobra.Command {
 					conv.SetModel(req.Model)
 				}
 
-				err = askai.SendReply(ctx, client, &conv, req.Messages, req.Stream, os.Stdout)
+				err = chatcompletion.SendReply(
+					ctx,
+					client,
+					&conv,
+					req.Messages,
+					req.Stream,
+					os.Stdout)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
 				}
@@ -56,10 +75,20 @@ func New(cfg *config.Config) *cobra.Command {
 		"conversation",
 		"",
 		"a named conversation to start or continue")
+	cmd.Flags().IntVar(
+		&req.MaxTokens,
+		"max-tokens",
+		0,
+		"The maximum number of tokens that can be generated in the chat completion (deprecated in favor of max-completion-tokens, but older servers may still only support this)")
+	cmd.Flags().IntVar(
+		&req.MaxCompletionTokens,
+		"max-completion-tokens",
+		0,
+		"The maximum number of tokens that can be generated in the chat completion")
 	cmd.Flags().StringVar(
 		&req.Model,
 		"model",
-		"mistral",
+		"",
 		"ai model to use")
 	MessageArrayVarP(
 		cmd.Flags(),

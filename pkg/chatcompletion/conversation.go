@@ -1,19 +1,14 @@
-package askai
+package chatcompletion
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/sashabaranov/go-openai"
 )
-
-type Client interface {
-	Reply(openai.ChatCompletionRequest, io.Writer) error
-}
 
 type PersistentConversation struct {
 	name    string
@@ -23,8 +18,16 @@ type PersistentConversation struct {
 // LoadPersistentConversation will load an existing conversation by the supplied
 // name or create it if it does not exist. If a new one is created, the returned
 // bool will be true.
-func LoadPersistentConversation(name string) (PersistentConversation, bool, error) {
+func LoadPersistentConversation(
+	name string,
+	defaults openai.ChatCompletionRequest,
+) (PersistentConversation, bool, error) {
 	c := PersistentConversation{name: name}
+
+	err := deepCopy(&c.request, &defaults)
+	if err != nil {
+		return c, false, fmt.Errorf("deep copy defaults: %w", err)
+	}
 
 	yml, err := os.ReadFile(conversationFile(name))
 	if err != nil {
@@ -98,4 +101,19 @@ func conversationDir() string {
 
 func conversationFile(name string) string {
 	return filepath.Join(conversationDir(), name)
+}
+
+// deepCopy will copy all public fields from src into dest recursively
+func deepCopy(dest any, src any) error {
+	data, err := json.Marshal(src)
+	if err != nil {
+		return fmt.Errorf("deepCopy marshal: %w", err)
+	}
+
+	err = json.Unmarshal(data, dest)
+	if err != nil {
+		return fmt.Errorf("deepCopy marshal: %w", err)
+	}
+
+	return nil
 }

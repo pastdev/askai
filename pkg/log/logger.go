@@ -25,7 +25,6 @@ func SetFormat(format string) {
 func SetLevel(level string) {
 	switch strings.ToUpper(level) {
 	case "TRACE":
-		Logger.Info().Msg("setting trace level")
 		Logger = Level(zerolog.TraceLevel)
 	case "DEBUG":
 		Logger = Level(zerolog.DebugLevel)

@@ -1,4 +1,4 @@
-package askai
+package config
 
 import (
 	"errors"
@@ -26,22 +26,23 @@ endpoints:
 `
 
 type Config struct {
-	Endpoints       map[string]ClientConfig `json:"endpoints" yaml:"endpoints"`
-	DefaultEndpoint string                  `json:"default_endpoint" yaml:"default_endpoint"`
+	Endpoints       map[string]EndpointConfig `json:"endpoints" yaml:"endpoints"`
+	DefaultEndpoint string                    `json:"default_endpoint" yaml:"default_endpoint"`
 }
 
-// ClientConfig is a configuration of a client.
-type ClientConfig struct {
-	AuthToken          string         `json:"auth_token" yaml:"auth_token"`
-	BaseURL            string         `json:"base_url" yaml:"base_url"`
-	OrgID              string         `json:"org_id" yaml:"org_id"`
-	APIType            openai.APIType `json:"api_type" yaml:"api_type"`
-	APIVersion         string         `json:"api_version" yaml:"api_version"`
-	EmptyMessagesLimit uint           `json:"empty_messages_limit" yaml:"empty_messages_limit"`
+// EndpointConfig is a configuration of a client.
+type EndpointConfig struct {
+	AuthToken              string                        `json:"auth_token" yaml:"auth_token"`
+	BaseURL                string                        `json:"base_url" yaml:"base_url"`
+	OrgID                  string                        `json:"org_id" yaml:"org_id"`
+	APIType                openai.APIType                `json:"api_type" yaml:"api_type"`
+	APIVersion             string                        `json:"api_version" yaml:"api_version"`
+	EmptyMessagesLimit     uint                          `json:"empty_messages_limit" yaml:"empty_messages_limit"`
+	ChatCompletionDefaults *openai.ChatCompletionRequest `json:"chat_completion_defaults" yaml:"chat_completion_defaults"`
 }
 
-// ConfigSource contains sources of yaml/json to load (unmarshal) into a Config.
-type ConfigSource struct {
+// Source contains sources of yaml/json to load (unmarshal) into a Config.
+type Source struct {
 	// Dirs is a list of directories containing config files to load. The
 	// directories will be processed in order loading the files within each
 	// directory in order sorted by filename with later values overriding
@@ -59,7 +60,7 @@ type loggingTransport struct {
 	wrapped http.RoundTripper
 }
 
-func (c *Config) NewClient(endpoint string) (*openai.Client, error) {
+func (c *Config) EndpointConfig(endpoint string) (*EndpointConfig, error) {
 	if endpoint == "" {
 		if c.DefaultEndpoint == "" {
 			return nil, errors.New("no explicit endpoint and default not configured")
@@ -72,10 +73,10 @@ func (c *Config) NewClient(endpoint string) (*openai.Client, error) {
 		return nil, fmt.Errorf("endpoint %s not configured", endpoint)
 	}
 
-	return clientCfg.NewClient(), nil
+	return &clientCfg, nil
 }
 
-func (c *ClientConfig) NewClient() *openai.Client {
+func (c *EndpointConfig) NewClient() *openai.Client {
 	cfg := openai.DefaultConfig(c.AuthToken)
 
 	if c.BaseURL != "" {
@@ -99,7 +100,7 @@ func (c *ClientConfig) NewClient() *openai.Client {
 
 	if log.Trace().Enabled() {
 		cfg.HTTPClient = &http.Client{
-			Transport: &loggingTransport{wrapped: cfg.HTTPClient.Transport},
+			Transport: &loggingTransport{wrapped: http.DefaultTransport},
 		}
 	}
 
@@ -136,7 +137,7 @@ func (c *Config) LoadString(s string) error {
 	return c.LoadBytes([]byte(s))
 }
 
-func (s ConfigSource) Load() (*Config, error) {
+func (s Source) Load() (*Config, error) {
 	c := &Config{}
 	for _, dir := range s.Dirs {
 		dir = s.normalizePath(dir)
@@ -199,7 +200,7 @@ func (s ConfigSource) Load() (*Config, error) {
 	return c, nil
 }
 
-func (s ConfigSource) normalizePath(path string) string {
+func (s Source) normalizePath(path string) string {
 	if path[0] == '~' {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {

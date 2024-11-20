@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	dario.cat/mergo v1.0.1
-	github.com/sashabaranov/go-openai v1.20.4
+	github.com/sashabaranov/go-openai v1.35.6
 	github.com/spf13/cobra v1.8.0
 	gopkg.in/yaml.v3 v3.0.1
 )

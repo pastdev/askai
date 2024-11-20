@@ -3,9 +3,8 @@ package config
 import (
 	"fmt"
 
-	"github.com/pastdev/askai/pkg/askai"
+	"github.com/pastdev/askai/pkg/config"
 	"github.com/pastdev/askai/pkg/log"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 )
 
@@ -24,8 +23,8 @@ var (
 )
 
 type Config struct {
-	configSource askai.ConfigSource
-	config       *askai.Config
+	configSource config.Source
+	config       *config.Config
 	endpoint     string
 }
 
@@ -45,7 +44,7 @@ func (c *Config) AddFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVar(&c.endpoint, "endpoint", "", "the enpoint to use")
 }
 
-func (c *Config) NewClient() (*openai.Client, error) {
+func (c *Config) EndpointConfig() (*config.EndpointConfig, error) {
 	if c.config == nil {
 		log.Trace().Interface("ConfigSource", c.configSource).Msg("load configuration")
 		cfg, err := c.configSource.Load()
@@ -55,9 +54,10 @@ func (c *Config) NewClient() (*openai.Client, error) {
 		c.config = cfg
 	}
 
-	client, err := c.config.NewClient(c.endpoint)
+	endpoint, err := c.config.EndpointConfig(c.endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("new client: %w", err)
+		return nil, fmt.Errorf("client config: %w", err)
 	}
-	return client, nil
+
+	return endpoint, nil
 }

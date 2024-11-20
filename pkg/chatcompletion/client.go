@@ -1,4 +1,4 @@
-package askai
+package chatcompletion
 
 import (
 	"context"
@@ -14,50 +14,6 @@ import (
 type Conversation interface {
 	Continue(...openai.ChatCompletionMessage) openai.ChatCompletionRequest
 	UpdateResponse(string) error
-}
-
-func SendReply(
-	ctx context.Context,
-	client *openai.Client,
-	conversation Conversation,
-	messages []openai.ChatCompletionMessage,
-	stream bool,
-	writer io.Writer,
-) error {
-	var buf strings.Builder
-
-	req := conversation.Continue(messages...)
-	req.Stream = stream
-
-	err := Send(ctx, client, req, io.MultiWriter(writer, &buf))
-	if err != nil {
-		return fmt.Errorf("send: %w", err)
-	}
-
-	err = conversation.UpdateResponse(buf.String())
-	if err != nil {
-		return fmt.Errorf("update response: %w", err)
-	}
-	return nil
-}
-
-func Send(
-	ctx context.Context,
-	client *openai.Client,
-	req openai.ChatCompletionRequest,
-	writer io.Writer,
-) error {
-	var err error
-	log.Debug().Bool("stream", req.Stream).Interface("messages", req.Messages).Msg("the messages")
-	if req.Stream {
-		err = HandleStreamResponse(ctx, client, req, writer)
-	} else {
-		err = HandleBufferResponse(ctx, client, req, writer)
-	}
-	if err != nil {
-		return fmt.Errorf("handle response: %w", err)
-	}
-	return nil
 }
 
 func HandleBufferResponse(
@@ -106,4 +62,48 @@ func HandleStreamResponse(
 			return fmt.Errorf("write response: %w", err)
 		}
 	}
+}
+
+func Send(
+	ctx context.Context,
+	client *openai.Client,
+	req openai.ChatCompletionRequest,
+	writer io.Writer,
+) error {
+	var err error
+	log.Debug().Bool("stream", req.Stream).Interface("messages", req.Messages).Msg("the messages")
+	if req.Stream {
+		err = HandleStreamResponse(ctx, client, req, writer)
+	} else {
+		err = HandleBufferResponse(ctx, client, req, writer)
+	}
+	if err != nil {
+		return fmt.Errorf("handle response: %w", err)
+	}
+	return nil
+}
+
+func SendReply(
+	ctx context.Context,
+	client *openai.Client,
+	conversation Conversation,
+	messages []openai.ChatCompletionMessage,
+	stream bool,
+	writer io.Writer,
+) error {
+	var buf strings.Builder
+
+	req := conversation.Continue(messages...)
+	req.Stream = stream
+
+	err := Send(ctx, client, req, io.MultiWriter(writer, &buf))
+	if err != nil {
+		return fmt.Errorf("send: %w", err)
+	}
+
+	err = conversation.UpdateResponse(buf.String())
+	if err != nil {
+		return fmt.Errorf("update response: %w", err)
+	}
+	return nil
 }
