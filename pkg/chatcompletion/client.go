@@ -12,7 +12,7 @@ import (
 )
 
 type Conversation interface {
-	Continue(...openai.ChatCompletionMessage) openai.ChatCompletionRequest
+	Continue(openai.ChatCompletionRequest) (openai.ChatCompletionRequest, error)
 	UpdateResponse(string) error
 }
 
@@ -87,16 +87,17 @@ func SendReply(
 	ctx context.Context,
 	client *openai.Client,
 	conversation Conversation,
-	messages []openai.ChatCompletionMessage,
-	stream bool,
+	reply openai.ChatCompletionRequest,
 	writer io.Writer,
 ) error {
 	var buf strings.Builder
 
-	req := conversation.Continue(messages...)
-	req.Stream = stream
+	req, err := conversation.Continue(reply)
+	if err != nil {
+		return fmt.Errorf("continue: %w", err)
+	}
 
-	err := Send(ctx, client, req, io.MultiWriter(writer, &buf))
+	err = Send(ctx, client, req, io.MultiWriter(writer, &buf))
 	if err != nil {
 		return fmt.Errorf("send: %w", err)
 	}

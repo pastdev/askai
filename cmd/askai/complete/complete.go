@@ -46,20 +46,16 @@ func New(cfg *config.Config) *cobra.Command {
 					return fmt.Errorf("complete chat: %w", err)
 				}
 			} else {
-				conv, isNew, err := chatcompletion.LoadPersistentConversation(conversation, *endpoint.ChatCompletionDefaults)
+				conv, err := chatcompletion.LoadPersistentConversation(conversation, *endpoint.ChatCompletionDefaults)
 				if err != nil {
 					return fmt.Errorf("load %s: %w", conversation, err)
-				}
-				if isNew {
-					conv.SetModel(req.Model)
 				}
 
 				err = chatcompletion.SendReply(
 					ctx,
 					client,
 					&conv,
-					req.Messages,
-					req.Stream,
+					req,
 					os.Stdout)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)

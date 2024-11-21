@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pastdev/askai/pkg/log"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -16,45 +17,48 @@ type PersistentConversation struct {
 }
 
 // LoadPersistentConversation will load an existing conversation by the supplied
-// name or create it if it does not exist. If a new one is created, the returned
-// bool will be true.
+// name or create it if it does not exist.
 func LoadPersistentConversation(
 	name string,
 	defaults openai.ChatCompletionRequest,
-) (PersistentConversation, bool, error) {
+) (PersistentConversation, error) {
 	c := PersistentConversation{name: name}
 
 	err := deepCopy(&c.request, &defaults)
 	if err != nil {
-		return c, false, fmt.Errorf("deep copy defaults: %w", err)
+		return c, fmt.Errorf("deep copy defaults: %w", err)
 	}
+	log.Trace().Interface("request", c.request).Msg("request after defaults")
 
 	yml, err := os.ReadFile(conversationFile(name))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return c, true, nil
+			return c, nil
 		}
 
-		return c, false, fmt.Errorf("read %s: %w", name, err)
+		return c, fmt.Errorf("read %s: %w", name, err)
 	}
 
 	err = json.Unmarshal(yml, &c.request)
 	if err != nil {
-		return c, false, fmt.Errorf("unmarshal %s: %w", c.name, err)
+		return c, fmt.Errorf("unmarshal %s: %w", c.name, err)
 	}
+	log.Trace().Interface("request", c.request).Msg("request after load")
 
-	return c, false, nil
-}
-
-func (c *PersistentConversation) SetModel(model string) {
-	c.request.Model = model
+	return c, nil
 }
 
 func (c *PersistentConversation) Continue(
-	msgs ...openai.ChatCompletionMessage,
-) openai.ChatCompletionRequest {
-	c.request.Messages = append(c.request.Messages, msgs...)
-	return c.request
+	reply openai.ChatCompletionRequest,
+) (openai.ChatCompletionRequest, error) {
+	//nolint: gocritic // assigned to same slice after deep copy
+	messages := append(c.request.Messages, reply.Messages...)
+	err := deepCopy(&c.request, &reply)
+	if err != nil {
+		return openai.ChatCompletionRequest{}, fmt.Errorf("deep copy reply: %w", err)
+	}
+	c.request.Messages = messages
+	return c.request, nil
 }
 
 func (c PersistentConversation) UpdateResponse(response string) error {
@@ -104,7 +108,12 @@ func conversationFile(name string) string {
 }
 
 // deepCopy will copy all public fields from src into dest recursively
-func deepCopy(dest any, src any) error {
+func deepCopy(dest *openai.ChatCompletionRequest, src *openai.ChatCompletionRequest) error {
+	// Model is not _omitempty_ and we want to preserve the value from the existing
+	// if it is not _explicitly changed_. So we store here and set it after if
+	// needed.
+	destModel := dest.Model
+
 	data, err := json.Marshal(src)
 	if err != nil {
 		return fmt.Errorf("deepCopy marshal: %w", err)
@@ -113,6 +122,10 @@ func deepCopy(dest any, src any) error {
 	err = json.Unmarshal(data, dest)
 	if err != nil {
 		return fmt.Errorf("deepCopy marshal: %w", err)
+	}
+
+	if src.Model == "" {
+		dest.Model = destModel
 	}
 
 	return nil
