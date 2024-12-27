@@ -46,7 +46,7 @@ func New(cfg *config.Config) *cobra.Command {
 					return fmt.Errorf("complete chat: %w", err)
 				}
 			} else {
-				conv, err := chatcompletion.LoadPersistentConversation(conversation, *endpoint.ChatCompletionDefaults)
+				conv, err := chatcompletion.LoadPersistentConversation(conversation, defaults)
 				if err != nil {
 					return fmt.Errorf("load %s: %w", conversation, err)
 				}
