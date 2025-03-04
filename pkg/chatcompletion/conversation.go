@@ -51,17 +51,25 @@ func LoadPersistentConversation(
 func (c *PersistentConversation) Continue(
 	reply openai.ChatCompletionRequest,
 ) (openai.ChatCompletionRequest, error) {
-	//nolint: gocritic // assigned to same slice after deep copy
-	messages := append(c.request.Messages, reply.Messages...)
-	log.Trace().Interface("messages", messages).Msg("after continue append")
+	// originally:
+	//   messages := append(c.request.Messages, reply.Messages...)
+	// but append actually modifies and returns the first argument so it was
+	// a reference to the c.request.Message that then got modified by the
+	// deepCopy call causing the reply to replace the first message (system):
+	//   https://github.com/pastdev/askai/issues/1
+	// so we need to create a new array to avoid this
+	messages := make(
+		[]openai.ChatCompletionMessage,
+		0,
+		len(c.request.Messages)+len(reply.Messages))
+	messages = append(messages, c.request.Messages...)
+	messages = append(messages, reply.Messages...)
+
 	err := deepCopy(&c.request, &reply)
 	if err != nil {
 		return openai.ChatCompletionRequest{}, fmt.Errorf("deep copy reply: %w", err)
 	}
-	log.Trace().Interface("messages", messages).Msg("BEFORE")
 	c.request.Messages = messages
-	log.Trace().Interface("messages", messages).Msg("AFTER")
-	log.Trace().Interface("request", c.request).Msg("continue request")
 	return c.request, nil
 }
 
