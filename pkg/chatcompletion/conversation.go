@@ -53,11 +53,15 @@ func (c *PersistentConversation) Continue(
 ) (openai.ChatCompletionRequest, error) {
 	//nolint: gocritic // assigned to same slice after deep copy
 	messages := append(c.request.Messages, reply.Messages...)
+	log.Trace().Interface("messages", messages).Msg("after continue append")
 	err := deepCopy(&c.request, &reply)
 	if err != nil {
 		return openai.ChatCompletionRequest{}, fmt.Errorf("deep copy reply: %w", err)
 	}
+	log.Trace().Interface("messages", messages).Msg("BEFORE")
 	c.request.Messages = messages
+	log.Trace().Interface("messages", messages).Msg("AFTER")
+	log.Trace().Interface("request", c.request).Msg("continue request")
 	return c.request, nil
 }
 
