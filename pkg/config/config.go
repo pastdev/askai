@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net/http"
@@ -32,13 +34,15 @@ type Config struct {
 
 // EndpointConfig is a configuration of a client.
 type EndpointConfig struct {
-	AuthToken              string                        `json:"auth_token" yaml:"auth_token"`
-	BaseURL                string                        `json:"base_url" yaml:"base_url"`
-	OrgID                  string                        `json:"org_id" yaml:"org_id"`
 	APIType                openai.APIType                `json:"api_type" yaml:"api_type"`
 	APIVersion             string                        `json:"api_version" yaml:"api_version"`
-	EmptyMessagesLimit     uint                          `json:"empty_messages_limit" yaml:"empty_messages_limit"`
+	AuthToken              string                        `json:"auth_token" yaml:"auth_token"`
+	BaseURL                string                        `json:"base_url" yaml:"base_url"`
 	ChatCompletionDefaults *openai.ChatCompletionRequest `json:"chat_completion_defaults" yaml:"chat_completion_defaults"`
+	CACerts                string                        `json:"cacerts" yaml:"cacerts"`
+	EmptyMessagesLimit     uint                          `json:"empty_messages_limit" yaml:"empty_messages_limit"`
+	InsecureSkipTLS        bool                          `json:"insecure_skip_tls" yaml:"insecure_skip_tls"`
+	OrgID                  string                        `json:"org_id" yaml:"org_id"`
 }
 
 // Source contains sources of yaml/json to load (unmarshal) into a Config.
@@ -98,11 +102,38 @@ func (c *EndpointConfig) NewClient() *openai.Client {
 		cfg.EmptyMessagesLimit = c.EmptyMessagesLimit
 	}
 
-	if log.Trace().Enabled() {
-		cfg.HTTPClient = &http.Client{
-			Transport: &loggingTransport{wrapped: http.DefaultTransport},
-		}
+	tlsConfig := &tls.Config{
+		//nolint: gosec // allow _explicit_ user configured skipping
+		InsecureSkipVerify: c.InsecureSkipTLS,
+		// linter wants a min version, but defaulttransport doesn't
+		// set one, so we may need to reconsider having this or
+		// maybe adding a way to tune it.
+		MinVersion: tls.VersionTLS12,
 	}
+
+	if c.CACerts != "" {
+		log.Trace().Str("cacerts", c.CACerts).Msg("adding configured certificate")
+		rootCAs, _ := x509.SystemCertPool()
+		if rootCAs == nil {
+			rootCAs = x509.NewCertPool()
+		}
+
+		ok := rootCAs.AppendCertsFromPEM([]byte(c.CACerts))
+		if !ok {
+			log.Warn().Msg("failed to add configured endpoint cacerts")
+		}
+
+		tlsConfig.RootCAs = rootCAs
+	}
+
+	var transport http.RoundTripper
+	transport = &http.Transport{TLSClientConfig: tlsConfig}
+
+	if log.Trace().Enabled() {
+		transport = &loggingTransport{wrapped: transport}
+	}
+
+	cfg.HTTPClient = &http.Client{Transport: transport}
 
 	return openai.NewClientWithConfig(cfg)
 }
@@ -234,8 +265,12 @@ func (s *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 		err = fmt.Errorf("inspected response: %w", err)
 	}
 
-	res, _ := httputil.DumpResponse(resp, dumpBody)
-	log.Trace().Err(err).Bytes("response", res).Msg("response")
+	if resp == nil {
+		log.Trace().Err(err).Bytes("response", []byte{}).Msg("response")
+	} else {
+		res, _ := httputil.DumpResponse(resp, dumpBody)
+		log.Trace().Err(err).Bytes("response", res).Msg("response")
+	}
 
 	return resp, err
 }
