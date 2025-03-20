@@ -4,6 +4,7 @@ import (
 	"github.com/pastdev/askai/cmd/askai/complete"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/cmd/askai/embedding"
+	"github.com/pastdev/askai/cmd/askai/models"
 	"github.com/pastdev/askai/cmd/askai/version"
 	"github.com/pastdev/askai/pkg/log"
 	"github.com/spf13/cobra"
@@ -30,6 +31,7 @@ func New() *cobra.Command {
 
 	cmd.AddCommand(complete.New(&cfg))
 	cmd.AddCommand(embedding.New(&cfg))
+	cmd.AddCommand(models.New(&cfg))
 	cmd.AddCommand(version.New())
 
 	return &cmd
