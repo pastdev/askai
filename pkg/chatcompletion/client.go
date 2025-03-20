@@ -64,7 +64,10 @@ func handleToolCalls(
 		}
 		// prolly wanna have a whitelist here. not sure if openai api has any
 		// safety guarantees, prolly not. ai _could_ just respond with a function
-		// not in the list like rm --rf /
+		// not in the list like rm --rf /. for now though, i am going to ignore
+		// this and revisit when i have a more concrete case for using tools
+		//   https://github.com/pastdev/askai/issues/4
+		//nolint: gosec
 		cmd := exec.CommandContext(ctx, toolCall.Function.Name, args...)
 		outBuf := &bytes.Buffer{}
 		errBuf := &bytes.Buffer{}
