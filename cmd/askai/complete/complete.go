@@ -18,7 +18,7 @@ func New(cfg *config.Config) *cobra.Command {
 
 	cmd := cobra.Command{
 		Use:   "complete",
-		Short: `Ask CI to complete a chat`,
+		Short: `Ask AI to complete a chat`,
 		//nolint: revive // required to match upstream signature
 		RunE: func(cmd *cobra.Command, args []string) error {
 			endpoint, err := cfg.EndpointConfig()
