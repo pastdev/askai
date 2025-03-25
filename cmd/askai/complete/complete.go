@@ -34,8 +34,6 @@ func New(cfg *config.Config) *cobra.Command {
 				defaults = *endpoint.ChatCompletionDefaults
 			}
 
-			req.LogitBias = map[string]int{}
-
 			if conversation == "" {
 				err := mergo.Merge(&req, defaults)
 				if err != nil {
