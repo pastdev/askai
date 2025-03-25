@@ -15,19 +15,18 @@ type Tokenizer interface {
 
 func NewTokenizer(model string) (Tokenizer, error) {
 	var errs error
+
 	tke, err := tiktoken.EncodingForModel(model)
 	if err == nil {
 		return tke, nil
-	} else {
-		errs = errors.Join(errs, fmt.Errorf("tiktoken: %w", err))
 	}
+	errs = errors.Join(errs, fmt.Errorf("tiktoken: %w", err))
 
 	llama, err := llama.EncodingForModel(model)
 	if err == nil {
 		return llama, nil
-	} else {
-		errs = errors.Join(errs, fmt.Errorf("llama: %w", err))
 	}
+	errs = errors.Join(errs, fmt.Errorf("llama: %w", err))
 
 	return nil, errs
 }
