@@ -1,16 +1,33 @@
 package tokenizer
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/pastdev/askai/pkg/tokenizer/llama"
 	"github.com/pkoukk/tiktoken-go"
 )
 
-func Tokenize(model string, text string) ([]int, error) {
+type Tokenizer interface {
+	Encode(text string, allowedSpecial []string, disallowedSpecial []string) []int
+	Decode(data []int) string
+}
+
+func NewTokenizer(model string) (Tokenizer, error) {
+	var errs error
 	tke, err := tiktoken.EncodingForModel(model)
-	if err != nil {
-		return nil, fmt.Errorf("get encoding: %w", err)
+	if err == nil {
+		return tke, nil
+	} else {
+		errs = errors.Join(errs, fmt.Errorf("tiktoken: %w", err))
 	}
 
-	return tke.Encode(text, nil, nil), nil
+	llama, err := llama.EncodingForModel(model)
+	if err == nil {
+		return llama, nil
+	} else {
+		errs = errors.Join(errs, fmt.Errorf("llama: %w", err))
+	}
+
+	return nil, errs
 }
