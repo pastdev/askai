@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"strings"
 
 	"github.com/pastdev/askai/pkg/log"
 	"github.com/sashabaranov/go-openai"
@@ -22,7 +21,7 @@ func HandleBufferResponse(
 	ctx context.Context,
 	client *openai.Client,
 	req openai.ChatCompletionRequest,
-	writer io.Writer,
+	writer ResponseWriter,
 ) error {
 	resp, err := client.CreateChatCompletion(ctx, req)
 	if err != nil {
@@ -37,7 +36,7 @@ func HandleBufferResponse(
 		}
 	}
 
-	_, err = fmt.Fprintln(writer, resp.Choices[0].Message.Content)
+	err = writer.Write(resp)
 	if err != nil {
 		return fmt.Errorf("write response: %w", err)
 	}
@@ -50,7 +49,7 @@ func handleToolCalls(
 	client *openai.Client,
 	req openai.ChatCompletionRequest,
 	resp openai.ChatCompletionResponse,
-	writer io.Writer,
+	writer ResponseWriter,
 ) error {
 	toolCalls := resp.Choices[0].Message.ToolCalls
 	toolCallCompletionMessages := make([]openai.ChatCompletionMessage, 0, len(toolCalls))
@@ -116,7 +115,7 @@ func HandleStreamResponse(
 	ctx context.Context,
 	client *openai.Client,
 	req openai.ChatCompletionRequest,
-	writer io.Writer,
+	writer ResponseWriter,
 ) error {
 	strm, err := client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
@@ -133,8 +132,8 @@ func HandleStreamResponse(
 			return fmt.Errorf("stream response: %w", err)
 		}
 
-		log.Trace().Msg("recieved stream chunk")
-		_, err = fmt.Fprint(writer, res.Choices[0].Delta.Content)
+		log.Trace().Interface("res", res).Msg("recieved stream chunk")
+		err = writer.WriteStream(res)
 		if err != nil {
 			return fmt.Errorf("write response: %w", err)
 		}
@@ -145,7 +144,7 @@ func Send(
 	ctx context.Context,
 	client *openai.Client,
 	req openai.ChatCompletionRequest,
-	writer io.Writer,
+	writer ResponseWriter,
 ) error {
 	var err error
 	log.Debug().Bool("stream", req.Stream).Interface("messages", req.Messages).Msg("the messages")
@@ -165,16 +164,15 @@ func SendReply(
 	client *openai.Client,
 	conversation Conversation,
 	reply openai.ChatCompletionRequest,
-	writer io.Writer,
+	writer ResponseWriter,
 ) error {
-	var buf strings.Builder
-
 	req, err := conversation.Continue(reply)
 	if err != nil {
 		return fmt.Errorf("continue: %w", err)
 	}
 
-	err = Send(ctx, client, req, io.MultiWriter(writer, &buf))
+	buf := NewResponseWriterContentBuffer(writer)
+	err = Send(ctx, client, req, buf)
 	if err != nil {
 		return fmt.Errorf("send: %w", err)
 	}

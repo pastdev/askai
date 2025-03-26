@@ -17,6 +17,7 @@ func New(cfg *config.Config) *cobra.Command {
 	var req openai.ChatCompletionRequest
 	var conversation string
 	var logItBias string
+	var output string
 
 	cmd := cobra.Command{
 		Use:   "complete",
@@ -67,6 +68,24 @@ func New(cfg *config.Config) *cobra.Command {
 				}
 			}
 
+			if req.TopLogProbs > 0 {
+				req.LogProbs = true
+			}
+
+			if req.LogProbs {
+				// obviously cant use "content" for output or you wouldn't see
+				// the log probs you explicitly asked for
+				output = "raw"
+			}
+
+			var writer chatcompletion.ResponseWriter
+			switch output {
+			case "content":
+				writer = &chatcompletion.ContentResponseWriter{W: os.Stdout}
+			case "raw":
+				writer = &chatcompletion.RawResponseWriter{W: os.Stdout}
+			}
+
 			if conversation == "" {
 				err := mergo.Merge(&req, defaults)
 				if err != nil {
@@ -74,7 +93,7 @@ func New(cfg *config.Config) *cobra.Command {
 				}
 				req.Messages = append(defaults.Messages, req.Messages...)
 
-				err = chatcompletion.Send(ctx, client, req, os.Stdout)
+				err = chatcompletion.Send(ctx, client, req, writer)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
 				}
@@ -89,7 +108,7 @@ func New(cfg *config.Config) *cobra.Command {
 					client,
 					&conv,
 					req,
-					os.Stdout)
+					writer)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
 				}
@@ -104,14 +123,16 @@ func New(cfg *config.Config) *cobra.Command {
 		"conversation",
 		"",
 		"A named conversation to start or continue")
-	// may want to mention in the help somewher that this value could be
-	// generated with the following approach:
-	//  printf "{%s}" "$(for i in "foo" " foo" "Foo" " Foo"; do printf '"%s":-100,' "$(askai tokens encode "$i" | clconf --pipe getv /0)"; done | sed 's/,$//')"
 	cmd.Flags().StringVar(
 		&logItBias,
 		"logit-bias",
 		"",
 		"A json map of string to int where they key is the token (can be obtained using: `askai tokens encode`) and the value is a bias between -100 (prohibit) and 100 (encourage)")
+	cmd.Flags().BoolVar(
+		&req.LogProbs,
+		"logprobs",
+		false,
+		"Returns the log probabilities of each output token returned in the content of message")
 	cmd.Flags().IntVar(
 		&req.MaxTokens,
 		"max-tokens",
@@ -159,6 +180,11 @@ func New(cfg *config.Config) *cobra.Command {
 		"a",
 		nil,
 		"One or more assistant content messages")
+	cmd.Flags().StringVar(
+		&output,
+		"output",
+		"content",
+		"Format of output, one of: content, raw")
 	cmd.Flags().BoolVar(
 		&req.Stream,
 		"stream",
@@ -170,6 +196,11 @@ func New(cfg *config.Config) *cobra.Command {
 		"t",
 		0,
 		"Temperature, zero is not set, so if you want zero, use 0.0000001 or similar")
+	cmd.Flags().IntVar(
+		&req.TopLogProbs,
+		"top-logprobs",
+		0,
+		"An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. Implies --logprobs")
 
 	return &cmd
 }
