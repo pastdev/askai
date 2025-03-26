@@ -2,6 +2,7 @@ package complete
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -15,10 +16,35 @@ import (
 func New(cfg *config.Config) *cobra.Command {
 	var req openai.ChatCompletionRequest
 	var conversation string
+	var logItBias string
 
 	cmd := cobra.Command{
 		Use:   "complete",
 		Short: `Ask AI to complete a chat`,
+		Example: `  # ask a simple question
+  askai complete --user "what color is the sky?"
+
+  # engage in a conversation about life, the world, and everything
+  askai complete \
+    --conversation life_the_world_and_everything \
+    --user "what is the meaning of life, the world, and everything?"
+
+  # get your answer from a frat boy
+  askai complete \
+    --system "you are a frat boy during peak frat" \
+    --user "whats the best beer for a night at the sorority?"
+
+  # create a short story about foo without using "foo"
+  askai complete \
+    --logit-bias "$(
+      printf "{%s}" \
+      "$(
+        for i in "foo" " foo" "Foo" " Foo"; do
+        printf '"%s":-100,' \
+          "$(askai tokens encode "$i" | clconf --pipe getv /0)"
+      done \
+        | sed 's/,$//')")" \
+    --user "tell me a short story about foo"`,
 		//nolint: revive // required to match upstream signature
 		RunE: func(cmd *cobra.Command, args []string) error {
 			endpoint, err := cfg.EndpointConfig()
@@ -32,6 +58,13 @@ func New(cfg *config.Config) *cobra.Command {
 			defaults := openai.ChatCompletionRequest{}
 			if endpoint.ChatCompletionDefaults != nil {
 				defaults = *endpoint.ChatCompletionDefaults
+			}
+
+			if logItBias != "" {
+				err := json.Unmarshal([]byte(logItBias), &req.LogitBias)
+				if err != nil {
+					return fmt.Errorf("logit bias: %w", err)
+				}
 			}
 
 			if conversation == "" {
@@ -70,7 +103,15 @@ func New(cfg *config.Config) *cobra.Command {
 		&conversation,
 		"conversation",
 		"",
-		"a named conversation to start or continue")
+		"A named conversation to start or continue")
+	// may want to mention in the help somewher that this value could be
+	// generated with the following approach:
+	//  printf "{%s}" "$(for i in "foo" " foo" "Foo" " Foo"; do printf '"%s":-100,' "$(askai tokens encode "$i" | clconf --pipe getv /0)"; done | sed 's/,$//')"
+	cmd.Flags().StringVar(
+		&logItBias,
+		"logit-bias",
+		"",
+		"A json map of string to int where they key is the token (can be obtained using: `askai tokens encode`) and the value is a bias between -100 (prohibit) and 100 (encourage)")
 	cmd.Flags().IntVar(
 		&req.MaxTokens,
 		"max-tokens",
@@ -85,7 +126,7 @@ func New(cfg *config.Config) *cobra.Command {
 		&req.Model,
 		"model",
 		"",
-		"ai model to use")
+		"AI model to use")
 	MessageArrayVarP(
 		cmd.Flags(),
 		"",
@@ -93,7 +134,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"message",
 		"m",
 		nil,
-		"one or more complete json messages")
+		"One or more complete json messages")
 	MessageArrayVarP(
 		cmd.Flags(),
 		"user",
@@ -101,7 +142,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"user",
 		"u",
 		nil,
-		"one or more user content messages")
+		"One or more user content messages")
 	MessageArrayVarP(
 		cmd.Flags(),
 		"system",
@@ -109,7 +150,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"system",
 		"s",
 		nil,
-		"one or more system content messages")
+		"One or more system content messages")
 	MessageArrayVarP(
 		cmd.Flags(),
 		"assistant",
@@ -117,18 +158,18 @@ func New(cfg *config.Config) *cobra.Command {
 		"assistant",
 		"a",
 		nil,
-		"one or more assistant content messages")
+		"One or more assistant content messages")
 	cmd.Flags().BoolVar(
 		&req.Stream,
 		"stream",
 		false,
-		"stream the response")
+		"Stream the response")
 	cmd.Flags().Float32VarP(
 		&req.Temperature,
 		"temperature",
 		"t",
 		0,
-		"temperature, zero is not set, so if you want zero, use 0.0000001 or similar")
+		"Temperature, zero is not set, so if you want zero, use 0.0000001 or similar")
 
 	return &cmd
 }
