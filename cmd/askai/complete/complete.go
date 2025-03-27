@@ -84,6 +84,8 @@ func New(cfg *config.Config) *cobra.Command {
 				writer = &chatcompletion.ContentResponseWriter{W: os.Stdout}
 			case "raw":
 				writer = &chatcompletion.RawResponseWriter{W: os.Stdout}
+			case "recap":
+				writer = &chatcompletion.RecapResponseWriter{W: os.Stdout}
 			}
 
 			if conversation == "" {
@@ -184,7 +186,7 @@ func New(cfg *config.Config) *cobra.Command {
 		&output,
 		"output",
 		"content",
-		"Format of output, one of: content, raw")
+		"Format of output, one of: content, raw, recap")
 	cmd.Flags().BoolVar(
 		&req.Stream,
 		"stream",

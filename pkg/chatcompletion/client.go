@@ -23,6 +23,11 @@ func HandleBufferResponse(
 	req openai.ChatCompletionRequest,
 	writer ResponseWriter,
 ) error {
+	err := writer.WriteRequest(req)
+	if err != nil {
+		return fmt.Errorf("write request: %w", err)
+	}
+
 	resp, err := client.CreateChatCompletion(ctx, req)
 	if err != nil {
 		return fmt.Errorf("chat completion: %w", err)
@@ -117,6 +122,11 @@ func HandleStreamResponse(
 	req openai.ChatCompletionRequest,
 	writer ResponseWriter,
 ) error {
+	err := writer.WriteRequest(req)
+	if err != nil {
+		return fmt.Errorf("write request: %w", err)
+	}
+
 	strm, err := client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
 		return fmt.Errorf("create completion stream: %w", err)
