@@ -2,9 +2,14 @@ package complete
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"dario.cat/mergo"
 	"github.com/pastdev/askai/cmd/askai/config"
@@ -13,11 +18,66 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func encodeAttachments(attachements []string) (string, error) {
+	var data strings.Builder
+	for _, attachment := range attachements {
+		parts := strings.Split(attachment, ":")
+		var filename string
+		var path string
+		switch len(parts) {
+		case 1:
+			path = parts[0]
+			filename = filepath.Base(parts[0])
+		default:
+			filename = parts[0]
+			path = parts[1]
+		}
+
+		info, err := os.Stat(path)
+		if err != nil {
+			return "", fmt.Errorf("stat attachment: %w", err)
+		}
+		if info.IsDir() {
+			err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if !d.IsDir() {
+					content, err := os.ReadFile(path)
+					if err != nil {
+						return fmt.Errorf("read attachment: %w", err)
+					}
+
+					data.WriteString(
+						fmt.Sprintf(
+							"%s: %s\n",
+							path,
+							base64.StdEncoding.EncodeToString(content)))
+				}
+				return nil
+			})
+			if err != nil {
+				return "", fmt.Errorf("attachment walk: %w", err)
+			}
+		} else {
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return "", fmt.Errorf("read attachment: %w", err)
+			}
+
+			data.WriteString(
+				fmt.Sprintf("%s: %s\n", filename, base64.StdEncoding.EncodeToString(content)))
+		}
+	}
+	return data.String(), nil
+}
+
 func New(cfg *config.Config) *cobra.Command {
 	var req openai.ChatCompletionRequest
 	var conversation string
 	var logItBias string
 	var output string
+	var attachments []string
 
 	cmd := cobra.Command{
 		Use:   "complete",
@@ -88,6 +148,25 @@ func New(cfg *config.Config) *cobra.Command {
 				writer = &chatcompletion.RecapResponseWriter{W: os.Stdout}
 			}
 
+			if len(attachments) > 0 {
+				for i := len(req.Messages) - 1; true; i-- {
+					if i < 0 {
+						return errors.New("no user message to append attements to")
+					}
+					if req.Messages[i].Role == openai.ChatMessageRoleUser {
+						data, err := encodeAttachments(attachments)
+						if err != nil {
+							return err
+						}
+						req.Messages[i].Content = fmt.Sprintf(
+							"%s\n\n########## base64 encoded attachments ##########\n%s",
+							req.Messages[i].Content,
+							data)
+						break
+					}
+				}
+			}
+
 			if conversation == "" {
 				err := mergo.Merge(&req, defaults)
 				if err != nil {
@@ -120,6 +199,14 @@ func New(cfg *config.Config) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().StringArrayVar(
+		&attachments,
+		"attach",
+		[]string{},
+		""+
+			"An attachment to add to the user message, these attachments will be base64 encoded and appended to the last user message. "+
+			"The format of the attachment argument is [alias:]path where alias is optional and if not supplied the basename of path will be used. "+
+			"If path is a directory, the directory will be recursively walked and all files encountered will be included.")
 	cmd.Flags().StringVar(
 		&conversation,
 		"conversation",
@@ -202,7 +289,9 @@ func New(cfg *config.Config) *cobra.Command {
 		&req.TopLogProbs,
 		"top-logprobs",
 		0,
-		"An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. Implies --logprobs")
+		""+
+			"An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. "+
+			"Implies --logprobs")
 
 	return &cmd
 }
