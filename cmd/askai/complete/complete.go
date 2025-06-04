@@ -204,11 +204,9 @@ func New(cfg *config.Config) *cobra.Command {
 		"attach",
 		[]string{},
 		""+
-			"An attachment to add to the user message, these attachments will be base64 encoded "+
-			"and appended to the last user message. The format of the attachment argument is "+
-			"[alias:]path where alias is optional and if not supplied the basename of path will "+
-			"be used. If path is a directory, the directory will be recursively walked and all "+
-			"files encountered will be included.")
+			"An attachment to add to the user message, these attachments will be base64 encoded and appended to the last user message. "+
+			"The format of the attachment argument is [alias:]path where alias is optional and if not supplied the basename of path will be used. "+
+			"If path is a directory, the directory will be recursively walked and all files encountered will be included.")
 	cmd.Flags().StringVar(
 		&conversation,
 		"conversation",
@@ -291,7 +289,9 @@ func New(cfg *config.Config) *cobra.Command {
 		&req.TopLogProbs,
 		"top-logprobs",
 		0,
-		"An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. Implies --logprobs")
+		""+
+			"An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. "+
+			"Implies --logprobs")
 
 	return &cmd
 }
