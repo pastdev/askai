@@ -203,7 +203,12 @@ func New(cfg *config.Config) *cobra.Command {
 		&attachments,
 		"attach",
 		[]string{},
-		"An attachment to add to the user message, these attachments will be base64 encoded and appended to the last user message. if the model supports user content containing files, that api _may_ be attempted (not yet implemented)")
+		""+
+			"An attachment to add to the user message, these attachments will be base64 encoded "+
+			"and appended to the last user message. The format of the attachment argument is "+
+			"[alias:]path where alias is optional and if not supplied the basename of path will "+
+			"be used. If path is a directory, the directory will be recursively walked and all "+
+			"files encountered will be included.")
 	cmd.Flags().StringVar(
 		&conversation,
 		"conversation",
