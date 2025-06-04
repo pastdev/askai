@@ -33,13 +33,45 @@ Example:
    Jira → Issues and filters → ScriptRunner → Logs
 ~~~
 
+## Installation
+
+`askai` is a self contained binary that has [pre-built releases for various platforms](https://github.com/pastdev/askai/releases).
+You may find this script valuable for installation:
+
+~~~bash
+# note this command uses clconf which can be found here:
+#   https://github.com/pastdev/clconf
+(
+  # where do you want this installed?
+  binary="${HOME}/.local/bin/askai"
+  # one of linux, darwin, windows
+  platform="linux"
+  curl \
+    --location \
+    --output "${binary}" \
+    "$(
+      curl --silent https://api.github.com/repos/pastdev/askai/releases/latest \
+        | clconf \
+          --pipe \
+          jsonpath "$..assets[*][?(@.name =~ /askai-${platform/windows/windows.exe}/)].browser_download_url" \
+          --first)"
+  chmod 0755 "${binary}"
+)
+~~~
+
+You may also find it useful to add this alias to one of your shell profile scripts:
+
+~~~bash
+alias ai='askai complete --user '
+~~~
+
 ## Configuration
 
 Configuration is loaded by default from the following directories (in order):
 
-* /etc/askai.d
-* ~/.config/askai.d
-* ./askai.d
+* `/etc/askai.d`
+* `~/.config/askai.d`
+* `./askai.d`
 
 The format of configuration is:
 
