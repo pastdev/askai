@@ -8,7 +8,9 @@ readonly ASKAI_SNAPSHOT_BIN="${ASKAI_SNAPSHOT_BIN_DIR}/askai-snapshot"
 
 cd "${ASKAI_SRC_DIR}"
 if [[ -v REBUILD ]] || [[ ! -x "${ASKAI_SNAPSHOT_BIN}" ]]; then
-  version="$(git describe --tags --abbrev=0)-SNAPSHOT"
+  base_version="$(git describe --tags --abbrev=0)"
+  IFS='.' read -r major minor patch <<<"${base_version/^v/}"
+  version="${major}.${minor}.$((patch+1))-SNAPSHOT"
   go build \
     -ldflags "-X github.com/pastdev/askai/cmd/askai/version.version=${version}" \
     -o "${ASKAI_SNAPSHOT_BIN}" \

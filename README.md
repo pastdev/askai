@@ -124,7 +124,7 @@ nameserver 172.22.144.1
 
 This information will be needed for your [configuration](#configuration).
 
-## Developemnt
+## Development
 
 This project has a _snapshot_ script that makes using a snapshot build version of the source easy.
 To make use of this feature, create a symlink to the script somewhere in your path.
