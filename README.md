@@ -59,6 +59,8 @@ You may find this script valuable for installation:
 )
 ~~~
 
+### The ai alias
+
 You may also find it useful to add this alias to one of your shell profile scripts:
 
 ~~~bash
@@ -121,3 +123,20 @@ nameserver 172.22.144.1
 ~~~
 
 This information will be needed for your [configuration](#configuration).
+
+## Developemnt
+
+This project has a _snapshot_ script that makes using a snapshot build version of the source easy.
+To make use of this feature, create a symlink to the script somewhere in your path.
+For example:
+
+~~~bash
+# assuming you are currently in the base directory of this project
+ln -s "$(pwd)/askais ~/.local/bin/askais
+~~~
+
+If you like [the `ai` alias](#the-ai-alias), you can updated it to point to this script:
+
+~~~bash
+alias ai="askais complete --user"
+~~~

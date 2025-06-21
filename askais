@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -e
+
+readonly ASKAI_SRC_DIR="${ASKAI_SRC_DIR:-$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")}"
+readonly ASKAI_SNAPSHOT_BIN_DIR="${ASKAI_SNAPSHOT_BIN_DIR:-"${HOME}/.local/bin"}"
+readonly ASKAI_SNAPSHOT_BIN="${ASKAI_SNAPSHOT_BIN_DIR}/askai-snapshot"
+
+cd "${ASKAI_SRC_DIR}"
+if [[ -v REBUILD ]] || [[ ! -x "${ASKAI_SNAPSHOT_BIN}" ]]; then
+  version="$(git describe --tags --abbrev=0)-SNAPSHOT"
+  go build \
+    -ldflags "-X github.com/pastdev/askai/cmd/askai/version.version=${version}" \
+    -o "${ASKAI_SNAPSHOT_BIN}" \
+    ./cmd/askai
+  chmod 0755 "${ASKAI_SNAPSHOT_BIN}"
+fi
+
+exec "${ASKAI_SNAPSHOT_BIN}" "$@"
