@@ -98,7 +98,7 @@ func (w *FileResponseWriter) writeURL(index int, imageURL string) error {
 	if err != nil {
 		return fmt.Errorf("writeurl download: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -109,9 +109,6 @@ func (w *FileResponseWriter) writeURL(index int, imageURL string) error {
 }
 
 // Writes the response as JSON.
-// Example response:
-//
-//	{"data":[{"url":"https://imgen.x.ai/xai-imgen/xai-tmp-imgen-ac6e2ba9-5acf-4809-85f2-f408f5747288.jpeg","revised_prompt":"A high-resolution photograph of a black Labrador Retriever with white spots, taken in a lush green park during the day. The dog is the central focus, sitting calmly on grass with a slightly alert expression, facing forward. The background features trees and a clear sky, providing a natural and serene setting without distractions. The lighting is soft and natural, highlighting the dog's fur texture and color. The composition avoids any foreground elements that might distract from the main subject, ensuring the dog's unique appearance is the highlight of the image."}]}
 func (w *RawResponseWriter) Write(res openai.ImageResponse) error {
 	err := json.NewEncoder(w.W).Encode(res)
 	if err != nil {

@@ -62,12 +62,12 @@ func (c *Config) Config() (*config.Config, error) {
 func (c *Config) EndpointConfig() (*config.EndpointConfig, error) {
 	cfg, err := c.Config()
 	if err != nil {
-		return nil, fmt.Errorf("load config: %w", err)
+		return nil, fmt.Errorf("endpointconfig load config: %w", err)
 	}
 
 	endpoint, err := cfg.EndpointConfig(c.endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("client config: %w", err)
+		return nil, fmt.Errorf("endpointconfig client config: %w", err)
 	}
 
 	return endpoint, nil
@@ -83,18 +83,21 @@ func New(c *Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := c.Config()
 			if err != nil {
-				return fmt.Errorf("load config: %w", err)
+				return fmt.Errorf("new load config: %w", err)
 			}
 
 			switch output {
 			case "yaml":
-				yaml.NewEncoder(os.Stdout).Encode(cfg)
+				err := yaml.NewEncoder(os.Stdout).Encode(cfg)
+				if err != nil {
+					return fmt.Errorf("new yaml encode: %w", err)
+				}
 			case "endpoints":
 				for endpoint := range cfg.Endpoints {
 					fmt.Println(endpoint)
 				}
 			default:
-				return fmt.Errorf("unsupported output format: %s", output)
+				return fmt.Errorf("new unsupported output format: %s", output)
 			}
 
 			return nil

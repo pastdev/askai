@@ -23,8 +23,8 @@ func New(cfg *config.Config) *cobra.Command {
 		Short: `Ask AI to generate an image`,
 		Example: `  # generate a dog picture
   askai image "a picture of a dog"`,
-		//nolint: revive // required to match upstream signature
 		Args: cobra.ExactArgs(1),
+		//nolint: revive // required to match upstream signature
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prompt := args[0]
 
