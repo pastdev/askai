@@ -80,6 +80,21 @@ The format of configuration is:
 ~~~yaml
 default_endpoint: windows_ollama
 endpoints:
+  # An API endpoint with both chat completion and image generation models
+  grok:
+    api_type: OPEN_AI
+    auth_token: <OMITTED>
+    base_url: "https://api.x.ai/v1"
+    # optionally supply defaults for requests
+    chat_completion_defaults:
+      messages:
+      - content: |
+          provide concise responses with minimal ceremony. do not use a
+          conversational style.
+        role: system
+      model: grok-3-latest
+    image_defaults:
+      model: grok-2-image-latest
   windows_ollama:
     api_type: OPEN_AI
     base_url: "http://172.22.144.1:11434/v1"
