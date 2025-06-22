@@ -4,6 +4,7 @@ go 1.24
 
 require (
 	dario.cat/mergo v1.0.1
+	github.com/pastdev/open v1.0.1
 	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/sashabaranov/go-openai v1.35.6
 	github.com/spf13/cobra v1.9.1

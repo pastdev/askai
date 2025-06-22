@@ -41,6 +41,7 @@ type EndpointConfig struct {
 	ChatCompletionDefaults *openai.ChatCompletionRequest `json:"chat_completion_defaults" yaml:"chat_completion_defaults"`
 	CACerts                string                        `json:"cacerts" yaml:"cacerts"`
 	EmptyMessagesLimit     uint                          `json:"empty_messages_limit" yaml:"empty_messages_limit"`
+	ImageDefaults          *openai.ImageRequest          `json:"image_defaults" yaml:"image_defaults"`
 	InsecureSkipTLS        bool                          `json:"insecure_skip_tls" yaml:"insecure_skip_tls"`
 	OrgID                  string                        `json:"org_id" yaml:"org_id"`
 }

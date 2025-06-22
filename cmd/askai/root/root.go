@@ -4,6 +4,7 @@ import (
 	"github.com/pastdev/askai/cmd/askai/complete"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/cmd/askai/embedding"
+	"github.com/pastdev/askai/cmd/askai/image"
 	"github.com/pastdev/askai/cmd/askai/models"
 	"github.com/pastdev/askai/cmd/askai/tokens"
 	"github.com/pastdev/askai/cmd/askai/version"
@@ -31,7 +32,9 @@ func New() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logFormat, "log-format", "pretty", "log format (pretty|json)")
 
 	cmd.AddCommand(complete.New(&cfg))
+	cmd.AddCommand(config.New(&cfg))
 	cmd.AddCommand(embedding.New(&cfg))
+	cmd.AddCommand(image.New(&cfg))
 	cmd.AddCommand(models.New(&cfg))
 	cmd.AddCommand(tokens.New())
 	cmd.AddCommand(version.New())
