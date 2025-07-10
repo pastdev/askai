@@ -31,10 +31,10 @@ func New() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logLevel, "log", "info", "log level")
 	cmd.PersistentFlags().StringVar(&logFormat, "log-format", "pretty", "log format (pretty|json)")
 
-	cmd.AddCommand(complete.New(&cfg))
-	cmd.AddCommand(embedding.New(&cfg))
-	cmd.AddCommand(image.New(&cfg))
-	cmd.AddCommand(models.New(&cfg))
+	cmd.AddCommand(complete.New(cfg))
+	cmd.AddCommand(embedding.New(cfg))
+	cmd.AddCommand(image.New(cfg))
+	cmd.AddCommand(models.New(cfg))
 	cmd.AddCommand(tokens.New())
 	cmd.AddCommand(version.New())
 
