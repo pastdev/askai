@@ -2,12 +2,12 @@ package config
 
 import (
 	"fmt"
-	"os"
+	"io"
 
-	"github.com/pastdev/askai/pkg/config"
-	"github.com/pastdev/askai/pkg/log"
+	pkgcfg "github.com/pastdev/askai/pkg/config"
+	cobracfg "github.com/pastdev/configloader/pkg/cobra"
+	cfgldr "github.com/pastdev/configloader/pkg/config"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -16,50 +16,20 @@ const (
 	UserConfigDir      = "~/.config/askai.d"
 )
 
-var (
-	defaultConfigDirs = []string{
-		SystemConfigDir,
-		UserConfigDir,
-		DirectoryConfigDir,
-	}
-)
-
 type Config struct {
-	configSource config.Source
-	config       *config.Config
+	configSource cobracfg.ConfigLoader[pkgcfg.Config]
 	endpoint     string
 }
 
-func (c *Config) AddFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringArrayVarP(
-		&c.configSource.Files,
-		"config",
-		"c",
-		nil,
-		"location of one or more config files")
-	cmd.PersistentFlags().StringArrayVarP(
-		&c.configSource.Dirs,
-		"config-dir",
-		"d",
-		defaultConfigDirs,
-		"location of one or more config directories")
-	cmd.PersistentFlags().StringVar(&c.endpoint, "endpoint", "", "the enpoint to use")
-}
-
-func (c *Config) Config() (*config.Config, error) {
-	if c.config == nil {
-		log.Trace().Interface("ConfigSource", c.configSource).Msg("load configuration")
-		cfg, err := c.configSource.Load()
-		if err != nil {
-			return nil, fmt.Errorf("newclient load: %w", err)
-		}
-		c.config = cfg
+func (c *Config) Config() (*pkgcfg.Config, error) {
+	cfg, err := c.configSource.Config()
+	if err != nil {
+		return nil, fmt.Errorf("config load: %w", err)
 	}
-
-	return c.config, nil
+	return cfg, nil
 }
 
-func (c *Config) EndpointConfig() (*config.EndpointConfig, error) {
+func (c *Config) EndpointConfig() (*pkgcfg.EndpointConfig, error) {
 	cfg, err := c.Config()
 	if err != nil {
 		return nil, fmt.Errorf("endpointconfig load config: %w", err)
@@ -73,42 +43,58 @@ func (c *Config) EndpointConfig() (*config.EndpointConfig, error) {
 	return endpoint, nil
 }
 
-func New(c *Config) *cobra.Command {
-	var output string
-
-	cmd := cobra.Command{
-		Use:   "config",
-		Short: `Print out configuration information`,
-		//nolint: revive // required to match upstream signature
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := c.Config()
-			if err != nil {
-				return fmt.Errorf("new load config: %w", err)
-			}
-
-			switch output {
-			case "yaml":
-				err := yaml.NewEncoder(os.Stdout).Encode(cfg)
-				if err != nil {
-					return fmt.Errorf("new yaml encode: %w", err)
-				}
-			case "endpoints":
+func (c *Config) AddConfigCommandTo(root *cobra.Command) {
+	c.configSource.AddSubCommandTo(
+		root,
+		cobracfg.WithConfigCommandOutput(
+			"endpoints",
+			func(w io.Writer, cfg *pkgcfg.Config) error {
 				for endpoint := range cfg.Endpoints {
-					fmt.Println(endpoint)
+					_, err := fmt.Fprintln(w, endpoint)
+					if err != nil {
+						return fmt.Errorf("print: %w", err)
+					}
 				}
-			default:
-				return fmt.Errorf("new unsupported output format: %s", output)
-			}
+				return nil
+			}))
+}
 
-			return nil
+func AddConfig(root *cobra.Command) Config {
+	cfg := Config{
+		configSource: cobracfg.ConfigLoader[pkgcfg.Config]{
+			DefaultSources: cfgldr.Sources[pkgcfg.Config]{
+				cfgldr.DirSource[pkgcfg.Config]{Path: SystemConfigDir},
+				cfgldr.DirSource[pkgcfg.Config]{Path: UserConfigDir},
+				cfgldr.DirSource[pkgcfg.Config]{Path: DirectoryConfigDir},
+			},
 		},
 	}
 
-	cmd.Flags().StringVar(
-		&output,
-		"output",
-		"content",
-		"Format of output, one of: yaml, endpoints")
+	cfg.configSource.AddSubCommandTo(
+		root,
+		cobracfg.WithConfigCommandOutput(
+			"endpoints",
+			func(w io.Writer, cfg *pkgcfg.Config) error {
+				for endpoint := range cfg.Endpoints {
+					_, err := fmt.Fprintln(w, endpoint)
+					if err != nil {
+						return fmt.Errorf("print: %w", err)
+					}
+				}
+				return nil
+			}))
 
-	return &cmd
+	cfg.configSource.PersistentFlags(root).FileSourceVarP(
+		cfgldr.YamlUnmarshal,
+		"config",
+		"c",
+		"location of one or more config files")
+	cfg.configSource.PersistentFlags(root).DirSourceVarP(
+		cfgldr.YamlUnmarshal,
+		"config-dir",
+		"d",
+		"location of one or more config directories")
+	root.PersistentFlags().StringVar(&cfg.endpoint, "endpoint", "", "the enpoint to use")
+
+	return cfg
 }
