@@ -2,7 +2,7 @@ package root
 
 import (
 	"github.com/pastdev/askai/cmd/askai/complete"
-	"github.com/pastdev/askai/cmd/askai/config"
+	cmdcfg "github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/cmd/askai/embedding"
 	"github.com/pastdev/askai/cmd/askai/image"
 	"github.com/pastdev/askai/cmd/askai/models"
@@ -13,7 +13,6 @@ import (
 )
 
 func New() *cobra.Command {
-	cfg := config.Config{}
 	var logLevel string
 	var logFormat string
 
@@ -27,12 +26,12 @@ func New() *cobra.Command {
 		},
 	}
 
-	cfg.AddFlags(&cmd)
+	cfg := cmdcfg.AddConfig(&cmd)
+
 	cmd.PersistentFlags().StringVar(&logLevel, "log", "info", "log level")
 	cmd.PersistentFlags().StringVar(&logFormat, "log-format", "pretty", "log format (pretty|json)")
 
 	cmd.AddCommand(complete.New(&cfg))
-	cmd.AddCommand(config.New(&cfg))
 	cmd.AddCommand(embedding.New(&cfg))
 	cmd.AddCommand(image.New(&cfg))
 	cmd.AddCommand(models.New(&cfg))

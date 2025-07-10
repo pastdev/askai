@@ -8,12 +8,9 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"os"
-	"path/filepath"
 
-	"dario.cat/mergo"
 	"github.com/pastdev/askai/pkg/log"
 	"github.com/sashabaranov/go-openai"
-	"gopkg.in/yaml.v3"
 )
 
 var ExampleConfig = `---
@@ -44,21 +41,6 @@ type EndpointConfig struct {
 	ImageDefaults          *openai.ImageRequest          `json:"image_defaults" yaml:"image_defaults"`
 	InsecureSkipTLS        bool                          `json:"insecure_skip_tls" yaml:"insecure_skip_tls"`
 	OrgID                  string                        `json:"org_id" yaml:"org_id"`
-}
-
-// Source contains sources of yaml/json to load (unmarshal) into a Config.
-type Source struct {
-	// Dirs is a list of directories containing config files to load. The
-	// directories will be processed in order loading the files within each
-	// directory in order sorted by filename with later values overriding
-	// existing values.
-	Dirs []string
-	// Files are config files to load. They will be loaded after files found in
-	// Dirs and, like dirs, later values override former.
-	Files []string
-	// Memory are strings containing config yaml to load. They will be loaded
-	// after files found in Filess and, like dirs, later values override former.
-	Memory []string
 }
 
 type loggingTransport struct {
@@ -137,111 +119,6 @@ func (c *EndpointConfig) NewClient() *openai.Client {
 	cfg.HTTPClient = &http.Client{Transport: transport}
 
 	return openai.NewClientWithConfig(cfg)
-}
-
-func (c *Config) LoadBytes(b []byte) error {
-	var overrides *Config
-	err := yaml.Unmarshal(b, &overrides)
-	if err != nil {
-		return fmt.Errorf("unmarshal config yml: %w", err)
-	}
-
-	err = mergo.Merge(c, overrides, mergo.WithOverride)
-	if err != nil {
-		return fmt.Errorf("merge config overrides: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Config) LoadFile(f string) error {
-	b, err := os.ReadFile(f)
-	if err != nil {
-		log.Debug().Str("file", f).Msg("config not found")
-		//nolint: nilerr // intentional ignore error
-		return nil
-	}
-
-	return c.LoadBytes(b)
-}
-
-func (c *Config) LoadString(s string) error {
-	return c.LoadBytes([]byte(s))
-}
-
-func (s Source) Load() (*Config, error) {
-	c := &Config{}
-	for _, dir := range s.Dirs {
-		dir = s.normalizePath(dir)
-		listing, err := os.ReadDir(dir)
-		if err != nil {
-			log.Debug().Str("dir", dir).Msg("no configs found")
-			continue
-		}
-
-		for _, entry := range listing {
-			name := entry.Name()
-			if !entry.Type().IsRegular() {
-				if entry.IsDir() {
-					log.Debug().
-						Str("dir", dir).
-						Str("subdir", entry.Name()).
-						Msg("skipping subdir")
-					continue
-				}
-
-				path, err := filepath.EvalSymlinks(filepath.Join(dir, entry.Name()))
-				if err != nil {
-					return c, fmt.Errorf("eval symlink: %w", err)
-				}
-				entry, err := os.Stat(path)
-				if err != nil {
-					return c, fmt.Errorf("stat: %w", err)
-				}
-				if entry.IsDir() {
-					log.Debug().
-						Str("dir", dir).
-						Str("symlinkSubdir", entry.Name()).
-						Msg("skipping subdir")
-					continue
-				}
-				name = entry.Name()
-			}
-
-			err = c.LoadFile(filepath.Join(dir, name))
-			if err != nil {
-				return c, fmt.Errorf("load from dir: %w", err)
-			}
-		}
-	}
-
-	for _, f := range s.Files {
-		err := c.LoadFile(s.normalizePath(f))
-		if err != nil {
-			return c, fmt.Errorf("load from file: %w", err)
-		}
-	}
-
-	for _, m := range s.Memory {
-		err := c.LoadBytes([]byte(m))
-		if err != nil {
-			return c, fmt.Errorf("load from memory: %w", err)
-		}
-	}
-
-	return c, nil
-}
-
-func (s Source) normalizePath(path string) string {
-	if path[0] == '~' {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			log.Trace().Err(err).Msg("User home directory not defined")
-			return path
-		}
-		path = filepath.Join(homeDir, path[1:])
-	}
-	return path
 }
 
 func (s *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {
