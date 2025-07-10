@@ -59,7 +59,7 @@ func (c *Config) AddConfigCommandTo(root *cobra.Command) {
 			}))
 }
 
-func AddConfig(root *cobra.Command) Config {
+func AddConfig(root *cobra.Command) *Config {
 	cfg := Config{
 		configSource: cobracfg.ConfigLoader[pkgcfg.Config]{
 			DefaultSources: cfgldr.Sources[pkgcfg.Config]{
@@ -94,7 +94,7 @@ func AddConfig(root *cobra.Command) Config {
 		"config-dir",
 		"d",
 		"location of one or more config directories")
-	root.PersistentFlags().StringVar(&cfg.endpoint, "endpoint", "", "the enpoint to use")
+	root.PersistentFlags().StringVar(&cfg.endpoint, "endpoint", "", "the endpoint to use")
 
-	return cfg
+	return &cfg
 }
