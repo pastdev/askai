@@ -63,9 +63,18 @@ func AddConfig(root *cobra.Command) *Config {
 	cfg := Config{
 		configSource: cobracfg.ConfigLoader[pkgcfg.Config]{
 			DefaultSources: cfgldr.Sources[pkgcfg.Config]{
-				cfgldr.DirSource[pkgcfg.Config]{Path: SystemConfigDir},
-				cfgldr.DirSource[pkgcfg.Config]{Path: UserConfigDir},
-				cfgldr.DirSource[pkgcfg.Config]{Path: DirectoryConfigDir},
+				cfgldr.DirSource[pkgcfg.Config]{
+					Path:      SystemConfigDir,
+					Unmarshal: cfgldr.YamlValueTemplateUnmarshal[pkgcfg.Config](nil),
+				},
+				cfgldr.DirSource[pkgcfg.Config]{
+					Path:      UserConfigDir,
+					Unmarshal: cfgldr.YamlValueTemplateUnmarshal[pkgcfg.Config](nil),
+				},
+				cfgldr.DirSource[pkgcfg.Config]{
+					Path:      DirectoryConfigDir,
+					Unmarshal: cfgldr.YamlValueTemplateUnmarshal[pkgcfg.Config](nil),
+				},
 			},
 		},
 	}
@@ -85,12 +94,12 @@ func AddConfig(root *cobra.Command) *Config {
 			}))
 
 	cfg.configSource.PersistentFlags(root).FileSourceVarP(
-		cfgldr.YamlUnmarshal,
+		cfgldr.YamlUnmarshal[pkgcfg.Config](),
 		"config",
 		"c",
 		"location of one or more config files")
 	cfg.configSource.PersistentFlags(root).DirSourceVarP(
-		cfgldr.YamlUnmarshal,
+		cfgldr.YamlUnmarshal[pkgcfg.Config](),
 		"config-dir",
 		"d",
 		"location of one or more config directories")

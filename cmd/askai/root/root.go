@@ -9,6 +9,7 @@ import (
 	"github.com/pastdev/askai/cmd/askai/tokens"
 	"github.com/pastdev/askai/cmd/askai/version"
 	"github.com/pastdev/askai/pkg/log"
+	cfgldrlog "github.com/pastdev/configloader/pkg/log"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +24,7 @@ func New() *cobra.Command {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			log.SetLevel(logLevel)
 			log.SetFormat(logFormat)
+			cfgldrlog.Logger = log.Logger
 		},
 	}
 

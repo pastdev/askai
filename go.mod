@@ -4,7 +4,7 @@ go 1.24.1
 
 require (
 	dario.cat/mergo v1.0.2
-	github.com/pastdev/configloader v1.0.1
+	github.com/pastdev/configloader v1.0.5
 	github.com/pastdev/open v1.0.1
 	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/sashabaranov/go-openai v1.35.6

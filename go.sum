@@ -18,8 +18,8 @@ github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/
 github.com/mattn/go-isatty v0.0.19/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
 github.com/mattn/go-isatty v0.0.20 h1:xfD0iDuEKnDkl03q4limB+vH+GxLEtL/jb4xVJSWWEY=
 github.com/mattn/go-isatty v0.0.20/go.mod h1:W+V8PltTTMOvKvAeJH7IuucS94S2C6jfK/D7dTCTo3Y=
-github.com/pastdev/configloader v1.0.1 h1:R6vWBvrXLSq1P5s4emRdG7ejWg4GoK3gZVvCxevd6kQ=
-github.com/pastdev/configloader v1.0.1/go.mod h1:4gEb04yx46iqDJjqvkhM8P7Fs0DWGIWf3DYlGX03s+8=
+github.com/pastdev/configloader v1.0.5 h1:fT4pJ7mqpQsqiylj8K0hEPq0DNyTa/ZBkW2XF7fpEHs=
+github.com/pastdev/configloader v1.0.5/go.mod h1:5etkpu8hsS1WETDR+TMEC2Tk47kQ4VcuMLhMOx4NDQo=
 github.com/pastdev/open v1.0.1 h1:gDUR0KUFBoSvIZmbRy5ucokLwGqp1sluUtrK3PT0ESI=
 github.com/pastdev/open v1.0.1/go.mod h1:BATOny5oMl8pKLTMnkU8qbvw7Z636qMwmnYbqEc2QcM=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
