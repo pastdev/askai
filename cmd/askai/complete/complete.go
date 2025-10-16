@@ -43,6 +43,7 @@ func encodeAttachments(attachements []string) (string, error) {
 					return err
 				}
 				if !d.IsDir() {
+					//nolint: gosec // the intent is to include a file from a user supplied location
 					content, err := os.ReadFile(path)
 					if err != nil {
 						return fmt.Errorf("read attachment: %w", err)
@@ -60,6 +61,7 @@ func encodeAttachments(attachements []string) (string, error) {
 				return "", fmt.Errorf("attachment walk: %w", err)
 			}
 		} else {
+			//nolint: gosec // the intent is to include a file from a user supplied location
 			content, err := os.ReadFile(path)
 			if err != nil {
 				return "", fmt.Errorf("read attachment: %w", err)
