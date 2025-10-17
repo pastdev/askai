@@ -6,10 +6,10 @@ import (
 	"os"
 
 	"dario.cat/mergo"
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/pkg/chatcompletion"
+	"github.com/pastdev/askai/pkg/git"
+	"github.com/pastdev/askai/pkg/log"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 )
@@ -23,65 +23,21 @@ Take the most modern best practices into account for the languages in question.
 Also take into account typical best practices that apply to any language.
 When commenting, provide the "why" in addition to the "what".
 
+The input format is that of a git diff with an overarching line number prefixed to the entire patch.
+Use this prefix line number to indicate where any suggestions are intended.
+
 Response must be a JSON document of the form:
 {
+  "diff": "...",
   "file": "foo/bar.sh",
   "line_start": 1,
   "line_end": 1,
   "suggestion": "include a shebang to identify the command to run"
-}`
-)
-
-func diff(base, head string) (string, error) {
-	repo, err := git.PlainOpen(".")
-	if err != nil {
-		return "", fmt.Errorf("git open: %w", err)
-	}
-	baseCommit, err := repo.CommitObject(plumbing.NewHash(base))
-	if err != nil {
-		return "", fmt.Errorf("git base commit: %w", err)
-	}
-	baseTree, err := baseCommit.Tree()
-	if err != nil {
-		return "", fmt.Errorf("git base tree: %w", err)
-	}
-	headCommit, err := repo.CommitObject(plumbing.NewHash(head))
-	if err != nil {
-		return "", fmt.Errorf("git head commit: %w", err)
-	}
-	headTree, err := headCommit.Tree()
-	if err != nil {
-		return "", fmt.Errorf("git head tree: %w", err)
-	}
-	patch, err := baseTree.Patch(headTree)
-	if err != nil {
-		return "", fmt.Errorf("git diff: %w", err)
-	}
-	return patch.String(), nil
-
-	// 	return `diff --git a/duplicate_function..sh b/duplicate_function.sh
-	// index 3f88e36..13553f0 100644
-	// --- a/duplicate_function.sh
-	// +++ b/duplicate_function.sh
-	// @@ -0,0 +1,16 @@
-	// +#!/bin/bash
-	// +
-	// +function foo {
-	// +  printf "%q " "$@" | sed 's/ $//'
-	// +}
-	// +
-	// +function bar {
-	// +  printf "%q " "$@" | sed 's/ $//'
-	// +}
-	// +
-	// +function main {
-	// +  foo hip hop
-	// +  bar hip hop
-	// +}
-	// +
-	// +main
-	// `, nil
 }
+diff MUST contain the full diff chunk that this suggestion refers to.
+line_start and line_end MUST take into account the line range supplied for the diff chunk.
+if suggesting addition of a new line of code, the line_start and line_end should have the same value and indicate where the insert should occur.`
+)
 
 func New(cfg *config.Config) *cobra.Command {
 	var req openai.ChatCompletionRequest
@@ -111,10 +67,13 @@ func New(cfg *config.Config) *cobra.Command {
 				defaults = *endpoint.ChatCompletionDefaults
 			}
 
-			codeDiff, err := diff(base, head)
+			codeDiff, err := git.Diff(".", base, head)
 			if err != nil {
 				return fmt.Errorf("diff: %w", err)
 			}
+			codeDiff = git.PrefixDiff(codeDiff)
+			fmt.Println(codeDiff)
+			log.Trace().Str("diff", codeDiff).Msg("git diff")
 			req.Messages = []openai.ChatCompletionMessage{
 				{
 					Role:    openai.ChatMessageRoleSystem,
