@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"dario.cat/mergo"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/pkg/chatcompletion"
 	"github.com/sashabaranov/go-openai"
@@ -28,28 +30,54 @@ response must be a json document of the form:
 )
 
 func diff(base, head string) (string, error) {
-	return `diff --git a/duplicate_function..sh b/duplicate_function.sh
-index 3f88e36..13553f0 100644
---- a/duplicate_function.sh
-+++ b/duplicate_function.sh
-@@ -0,0 +1,16 @@
-+#!/bin/bash
-+
-+function foo {
-+  printf "%q " "$@" | sed 's/ $//'
-+}
-+
-+function bar {
-+  printf "%q " "$@" | sed 's/ $//'
-+}
-+
-+function main {
-+  foo hip hop
-+  bar hip hop
-+}
-+
-+main
-`, nil
+	repo, err := git.PlainOpen(".")
+	if err != nil {
+		return "", fmt.Errorf("git open: %w", err)
+	}
+	baseCommit, err := repo.CommitObject(plumbing.NewHash(base))
+	if err != nil {
+		return "", fmt.Errorf("git base commit: %w", err)
+	}
+	baseTree, err := baseCommit.Tree()
+	if err != nil {
+		return "", fmt.Errorf("git base tree: %w", err)
+	}
+	headCommit, err := repo.CommitObject(plumbing.NewHash(head))
+	if err != nil {
+		return "", fmt.Errorf("git head commit: %w", err)
+	}
+	headTree, err := headCommit.Tree()
+	if err != nil {
+		return "", fmt.Errorf("git head tree: %w", err)
+	}
+	patch, err := baseTree.Patch(headTree)
+	if err != nil {
+		return "", fmt.Errorf("git diff: %w", err)
+	}
+	return patch.String(), nil
+
+	// 	return `diff --git a/duplicate_function..sh b/duplicate_function.sh
+	// index 3f88e36..13553f0 100644
+	// --- a/duplicate_function.sh
+	// +++ b/duplicate_function.sh
+	// @@ -0,0 +1,16 @@
+	// +#!/bin/bash
+	// +
+	// +function foo {
+	// +  printf "%q " "$@" | sed 's/ $//'
+	// +}
+	// +
+	// +function bar {
+	// +  printf "%q " "$@" | sed 's/ $//'
+	// +}
+	// +
+	// +function main {
+	// +  foo hip hop
+	// +  bar hip hop
+	// +}
+	// +
+	// +main
+	// `, nil
 }
 
 func New(cfg *config.Config) *cobra.Command {
