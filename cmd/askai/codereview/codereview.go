@@ -15,12 +15,15 @@ import (
 )
 
 const (
-	SystemPrompt = `you are performing a code review. user input will be in the form of a git
-diff between the base and head commits that define a merge request.
-if you require additional context to make sense of any of the diff
-segments, use the supplied tools to request additional context.
+	SystemPrompt = `You are acting as a senior developer doing a first-pass code review.
+Your task is to find issues with code quality that could impact long term maintenance of the code base and provide feedback or suggestions that MUST, SHOULD, or COULD be taken before the code is accepted into the primary branch.
+Look for bugs, code smells, security issues and any other issues with the code and determine a level at which they apply.
+For example, a potential SQL injection would rate a MUST, but renaming a variable for clarity may be a COULD.
+Take the most modern best practices into account for the languages in question.
+Also take into account typical best practices that apply to any language.
+When commenting, provide the "why" in addition to the "what".
 
-response must be a json document of the form:
+Response must be a JSON document of the form:
 {
   "file": "foo/bar.sh",
   "line_start": 1,
