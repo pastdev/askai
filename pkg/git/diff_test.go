@@ -97,3 +97,9 @@ package git
 //     12  +
 //     13  +main
 //     14
+//
+// ####################
+//      1  diff --git a/foo.sh b/bar.sh
+//      2  similarity index 100%
+//      3  rename from foo.sh
+//      4  rename to bar.sh
