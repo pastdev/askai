@@ -74,7 +74,6 @@ func New(cfg *config.Config) *cobra.Command {
 			codeDiff = git.PrefixDiff(codeDiff)
 			// CODE_REVIEW_CATCH_ME: remove this
 			fmt.Println(codeDiff)
-			return nil
 			log.Trace().Str("diff", codeDiff).Msg("git diff")
 			req.Messages = []openai.ChatCompletionMessage{
 				{
