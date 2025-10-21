@@ -1,85 +1,99 @@
 package git
 
 // ####################
-// diff --git a/README.md b/README.md
-// new file mode 100644
-// index 0000000..fac08eb
-// --- /dev/null
-// +++ b/README.md
-// @@ -0,0 +1,5 @@
-// +# Space in path
-// +
-// +This scenario introduces a file with space in its name so we can see what a diff
-// +looks like with space in the path.
-// +
+//      1  diff --git a/README.md b/README.md
+//      2  new file mode 100644
+//      3  index 0000000..fac08eb
+//      4  --- /dev/null
+//      5  +++ b/README.md
+//      6  @@ -0,0 +1,5 @@
+//      7  +# Space in path
+//      8  +
+//      9  +This scenario introduces a file with space in its name so we can see what a diff
+//     10  +looks like with space in the path.
+//     11  +
 //
 // ####################
-// diff --git a/file with space.txt b/file with space.txt
-// new file mode 100644
-// index 0000000..9767b7a
-// --- /dev/null
-// +++ b/file with space.txt
-// @@ -0,0 +1,2 @@
-// +This is a test file
-// +
+//      1  diff --git a/file with space.txt b/file with space.txt
+//      2  new file mode 100644
+//      3  index 0000000..9767b7a
+//      4  --- /dev/null
+//      5  +++ b/file with space.txt
+//      6  @@ -0,0 +1,2 @@
+//      7  +This is a test file
+//      8  +
 //
 // ####################
-// diff --git a/file with space.txt b/file with space.txt
-// index 9767b7a..f1a3e81 100644
-// --- a/file with space.txt
-// +++ b/file with space.txt
-// @@ -1,2 +1,2 @@
-// -This is a test file
-// +This is a test file with a modification
-//
-//
-// ####################
-// diff --git a/file with space.txt b/file with space.txt
-// deleted file mode 100644
-// index f1a3e81..0000000
-// --- a/file with space.txt
-// +++ /dev/null
-// @@ -1,2 +0,0 @@
-// -This is a test file with a modification
-// -
+//      1  diff --git a/file with space.txt b/file with space.txt
+//      2  index 9767b7a..f1a3e81 100644
+//      3  --- a/file with space.txt
+//      4  +++ b/file with space.txt
+//      5  @@ -1,2 +1,2 @@
+//      6  -This is a test file
+//      7  +This is a test file with a modification
+//      8
 //
 // ####################
-// diff --git a/file with space.txt b/file with space.txt
-// new file mode 100644
-// index 0000000..f187ac1
-// --- /dev/null
-// +++ b/file with space.txt
-// @@ -0,0 +1,2 @@
-// +gonna change mode
-// +
+//      1  diff --git a/file with space.txt b/file with space.txt
+//      2  deleted file mode 100644
+//      3  index f1a3e81..0000000
+//      4  --- a/file with space.txt
+//      5  +++ /dev/null
+//      6  @@ -1,2 +0,0 @@
+//      7  -This is a test file with a modification
+//      8  -
 //
 // ####################
-// diff --git a/file with space.txt b/file with space.txt
-// old mode 100644
-// new mode 100755
+//      1  diff --git a/file with space.txt b/file with space.txt
+//      2  new file mode 100644
+//      3  index 0000000..f187ac1
+//      4  --- /dev/null
+//      5  +++ b/file with space.txt
+//      6  @@ -0,0 +1,2 @@
+//      7  +gonna change mode
+//      8  +
 //
 // ####################
-// diff --git a/file with space.txt b/file with space.txt
-// old mode 100755
-// new mode 100644
-// index f187ac1..271a4cd
-// --- a/file with space.txt
-// +++ b/file with space.txt
-// @@ -1,2 +1,2 @@
-// -gonna change mode
-// +gonna change mode and changed text
+//      1  diff --git a/file with space.txt b/file with space.txt
+//      2  old mode 100644
+//      3  new mode 100755
 //
 // ####################
-// diff --git a/foo.sh b/foo.sh
-// index e40a992..641f120 100755
-// --- a/foo.sh
-// +++ b/foo.sh
-// @@ -1,4 +1,8 @@
-//  #!/bin/bash
+//      1  diff --git a/file with space.txt b/file with space.txt
+//      2  old mode 100755
+//      3  new mode 100644
+//      4  index f187ac1..271a4cd
+//      5  --- a/file with space.txt
+//      6  +++ b/file with space.txt
+//      7  @@ -1,2 +1,2 @@
+//      8  -gonna change mode
+//      9  +gonna change mode and changed text
+//     10
 //
-// -echo "foo.sh"
-// +function main {
-// +  echo "foo.sh"
-// +}
-// +
-// +main
+// ####################
+//      1  diff --git a/foo.sh b/foo.sh
+//      2  new file mode 100755
+//      3  index 0000000..e40a992
+//      4  --- /dev/null
+//      5  +++ b/foo.sh
+//      6  @@ -0,0 +1,4 @@
+//      7  +#!/bin/bash
+//      8  +
+//      9  +echo "foo.sh"
+//     10  +
+//
+// ####################
+//      1  diff --git a/foo.sh b/foo.sh
+//      2  index e40a992..641f120 100755
+//      3  --- a/foo.sh
+//      4  +++ b/foo.sh
+//      5  @@ -1,4 +1,8 @@
+//      6   #!/bin/bash
+//      7
+//      8  -echo "foo.sh"
+//      9  +function main {
+//     10  +  echo "foo.sh"
+//     11  +}
+//     12  +
+//     13  +main
+//     14
