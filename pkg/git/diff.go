@@ -80,7 +80,7 @@ func PrefixDiff(diff string) string {
 	scanner := bufio.NewScanner(strings.NewReader(diff))
 	for i := 0; scanner.Scan(); i++ {
 		line := scanner.Text()
-		prefixed.WriteString(fmt.Sprintf("%d %s\n", i, line))
+		prefixed.WriteString(fmt.Sprintf("Line %d: %s\n", i, line))
 	}
 	return prefixed.String()
 }
