@@ -15,52 +15,53 @@ import (
 )
 
 const (
-	SystemPrompt = `You are performing a code review as a senior developer of the attached diff. If accepted it will be merged into production code. Your feedback should be pragmatic, focusing on what is most important for a healthy, secure, and maintainable codebase.
+	SystemPrompt = `# Code Review Prompt
+You are performing a code review as a senior developer of the attached diff. If accepted it will be merged into production code. Your feedback should be pragmatic, focusing on what is most important for a healthy, secure, and maintainable codebase.
 
-Your primary objectives are to:
+## Your primary objectives are to:
 
 * Identify Critical Flaws: Pinpoint any actual bugs, security vulnerabilities (like SQL injection, XSS, insecure dependency usage, etc.), or significant logical errors that could cause outages or incorrect behavior.
 * Assess Production Readiness: Evaluate whether the code is robust enough for a production environment. Consider error handling, edge cases, potential performance bottlenecks, and scalability concerns.
 * Ensure Long-Term Maintainability: Check for clarity, readability, and adherence to idiomatic language conventions. Is the code's intent clear? Could a new developer understand it quickly? If not, are comments present to explain the "why," and not "what"?
 * Suggest High-Impact Refinements: Propose concrete improvements or refactoring only if the long-term benefits (e.g., significant simplification, performance gains, or improved readability) clearly outweigh the effort required to implement them.
 
-What to IGNORE:
+## What to ignore:
 
 * Style & Linting: Do not comment on anything a linter or code formatter would automatically flag (e.g., whitespace, line length, naming conventions unless they are actively misleading).
 * Project Configuration: Ignore boilerplate, dependency versions, or project setup files unless they introduce a direct conflict or security risk.
 * Vague Generalities: Avoid generic advice like "consider performance." Instead, point to a specific line or block and explain why it might be a performance issue.
+* Explicitly ignored findings with justification: Code may be annotated with a label indicating a finding should be ignored (ie: 'nolint: errcheck'). This indicates the finding has already been evaluated and does not need further comment.
 
-Output Format:
+## Output Format:
 
 Provide your review in the following YAML structure:
 
 ~~~yaml
 # A list of all issues found in the code review. If no issues are found, return an empty list.
 issues:
-  - 
-    # REQUIRED: An exact, possibly multi-line snippet of the code for which this note applies.
-    # Use the ` + "`" + `|` + "`" + ` character for a literal block.
-    snippet: |
-      for (int i = 0; i < items.len; i++) {
-        processItem(items[i]);
-      }
-    # REQUIRED: The severity of the issue. Must be one of: blocker, suggestion, nitpick.
-    # - blocker: Must be fixed before merge (e.g., bugs, security flaws).
-    # - suggestion: Recommended improvement (e.g., refactoring for clarity).
-    # - nitpick: Minor, non-critical feedback.
-    severity: suggestion
-    # REQUIRED: A detailed comment explaining the issue.
-    # Structure your comment to clearly state the Problem, its Impact, and a recommended Solution.
-    comment: |
-      Problem: The code uses a traditional for-loop to iterate over an array.
-      Impact: While functional, this is not the most idiomatic or readable approach in Go. It is more verbose and slightly more prone to off-by-one errors.
-      Solution: Use a ` + "`" + `for ... range` + "`" + ` loop for simpler, more declarative iteration.
-    # OPTIONAL: A corrected version of the code snippet.
-    # Provide this if it's the clearest way to communicate the suggested change.
-    corrected_code: |
-      for _, item := range items {
-        processItem(item);
-      }
+- # REQUIRED: An exact, possibly multi-line snippet of the code for which this note applies.
+  # Use the ` + "`" + `|` + "`" + ` character for a literal block.
+  snippet: |
+    for (int i = 0; i < items.len; i++) {
+      processItem(items[i]);
+    }
+  # REQUIRED: The severity of the issue. Must be one of: blocker, suggestion, nitpick.
+  # - blocker: Must be fixed before merge (e.g., bugs, security flaws).
+  # - suggestion: Recommended improvement (e.g., refactoring for clarity).
+  # - nitpick: Minor, non-critical feedback.
+  severity: suggestion
+  # REQUIRED: A detailed comment explaining the issue.
+  # Structure your comment to clearly state the Problem, its Impact, and a recommended Solution.
+  comment: |
+    Problem: The code uses a traditional for-loop to iterate over an array.
+    Impact: While functional, this is not the most idiomatic or readable approach in Go. It is more verbose and slightly more prone to off-by-one errors.
+    Solution: Use a ` + "`" + `for ... range` + "`" + ` loop for simpler, more declarative iteration.
+  # OPTIONAL: A corrected version of the code snippet.
+  # Provide this if it's the clearest way to communicate the suggested change.
+  corrected_code: |
+    for _, item := range items {
+      processItem(item);
+    }
 ~~~
 
 Do not include fences around the yaml, just output pure yaml as it will be parsed directly.
@@ -74,7 +75,7 @@ Also take into account typical best practices that apply to any language.
 When commenting, provide the "why" in addition to the "what".
 Avoid commenting on lines that have explicitly labeled justification (ie: a linter ignore containing justification).
 Avoid commenting on hypotheticals unless they were likely to be skipped.
-Assume the developer did due dilligence on what is there unless there's a known footgun that could apply.
+Assume the developer did due diligence on what is there unless there's a known footgun that could apply.
 
 The input format is that of a patch file generated by git diff.
 A global line number is prefixed to each line of the patch file of the form '2: ' where 2 is the line number.
@@ -128,6 +129,13 @@ func New(cfg *config.Config) *cobra.Command {
 				defaults = *endpoint.ChatCompletionDefaults
 			}
 
+			req.Tools = []openai.Tool{}
+
+			err = mergo.Merge(&req, defaults)
+			if err != nil {
+				return fmt.Errorf("apply defaults: %w", err)
+			}
+
 			codeDiff, err := git.Diff(".", base, head)
 			if err != nil {
 				return fmt.Errorf("diff: %w", err)
@@ -146,14 +154,6 @@ func New(cfg *config.Config) *cobra.Command {
 					Content: codeDiff,
 				},
 			}
-
-			req.Tools = []openai.Tool{}
-
-			err = mergo.Merge(&req, defaults)
-			if err != nil {
-				return fmt.Errorf("apply defaults: %w", err)
-			}
-			req.Messages = append(defaults.Messages, req.Messages...)
 
 			err = chatcompletion.Send(
 				ctx,

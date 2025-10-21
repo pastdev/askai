@@ -41,7 +41,11 @@ func Diff(repoDir, base, head string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("git open: %w", err)
 	}
-	baseCommit, err := repo.CommitObject(plumbing.NewHash(base))
+	baseRev, err := repo.ResolveRevision(plumbing.Revision(base))
+	if err != nil {
+		return "", fmt.Errorf("git base rev: %w", err)
+	}
+	baseCommit, err := repo.CommitObject(*baseRev)
 	if err != nil {
 		return "", fmt.Errorf("git base commit: %w", err)
 	}
@@ -49,7 +53,11 @@ func Diff(repoDir, base, head string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("git base tree: %w", err)
 	}
-	headCommit, err := repo.CommitObject(plumbing.NewHash(head))
+	headRev, err := repo.ResolveRevision(plumbing.Revision(head))
+	if err != nil {
+		return "", fmt.Errorf("git head rev: %w", err)
+	}
+	headCommit, err := repo.CommitObject(*headRev)
 	if err != nil {
 		return "", fmt.Errorf("git head commit: %w", err)
 	}
