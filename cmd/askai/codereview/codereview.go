@@ -14,6 +14,67 @@ import (
 )
 
 const (
+	OutputSchema SchemaJSON = `
+{
+  "name": "code_review",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.com/product.schema.json",
+    "description": "a code review",
+    "properties": {
+      "issues": {
+        "description": "a list of all issues found in the code review. if no issues are found, return an empty list.",
+        "items": {
+          "properties": {
+            "comment": {
+              "description": "a detailed comment explaining the issue. structure your comment to clearly state the problem, its impact, and a recommended solution.",
+              "examples": [
+                "Problem: The code uses a traditional for-loop to iterate over an array.\nImpact: While functional, this is not the most idiomatic or readable approach in Go. It is more verbose and slightly more prone to off-by-one errors.\nSolution: Use a ` + "`" + `for ... range` + "`" + ` loop for simpler, more declarative iteration."
+              ],
+              "type": "string"
+            },
+            "corrected_code": {
+              "description": "a corrected version of the code snippet. provide this if it's the clearest way to communicate the suggested change.",
+              "examples": [
+                "for _, item := range items {\n\tprocessItem(item);\n}"
+              ],
+              "type": "string"
+            },
+            "hunk_headers": {
+              "description": "the diff hunk header shown prior to the block of code that is being commented on. should not contain the body of the diff hunk",
+              "examples": [
+                "diff --git a/cmd/askai/codereview/codereview.go b/cmd/askai/codereview/codereview.go\nnew file mode 100644\nindex 0000000..b9e09f4\n--- /dev/null\n+++ b/cmd/askai/codereview/codereview.go\n@@ -0,0 +1,140 @@"
+              ],
+              "type": "string"
+            },
+            "severity": {
+              "description": "the severity of the issue.\n- blocker: Must be fixed before merge (e.g., bugs, security flaws).\n- suggestion: Recommended improvement (e.g., refactoring for clarity).\n- nitpick: Minor, non-critical feedback.",
+              "enum": [
+                "blocker",
+                "suggestion",
+                "nitpick"
+              ],
+              "type": "string"
+            },
+            "snippet": {
+              "description": "an exact, possibly multi-line snippet of the code for which this note applies.",
+              "examples": [
+                "for (int i = 0; i < items.len; i++) {\n\tprocessItem(items[i]);\n}"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "type": "array"
+      }
+    },
+    "title": "code_review",
+    "type": "object"
+  },
+  "strict": true
+}
+`
 	SystemPrompt = `# Code Review Prompt
 You are performing a code review as a senior developer of the attached diff. If accepted it will be merged into production code. Your feedback should be pragmatic, focusing on what is most important for a healthy, secure, and maintainable codebase.
 
@@ -30,73 +91,32 @@ You are performing a code review as a senior developer of the attached diff. If 
 * Project Configuration: Ignore boilerplate, dependency versions, or project setup files unless they introduce a direct conflict or security risk.
 * Vague Generalities: Avoid generic advice like "consider performance." Instead, point to a specific line or block and explain why it might be a performance issue.
 * Explicitly ignored findings with justification: Code may be annotated with a label indicating a finding should be ignored (ie: 'nolint: errcheck'). This indicates the finding has already been evaluated and does not need further comment.
+`
+)
+
+var (
+	SystemPromptWithOutputFormat = SystemPrompt + `
 
 ## Output format:
 
-Provide your review in JSON format following the schema:
+Output MUST be a single, parseable, JSON object that can be validated against the following schema.
+It MUST NOT include the schema itself.
+It MUST NOT be surrounded by markdown fences (triple backtick or triple tilde).
 
 ~~~json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.com/product.schema.json",
-  "description": "a code review",
-  "properties": {
-    "issues": {
-      "description": "a list of all issues found in the code review. if no issues are found, return an empty list.",
-      "items": [
-        "type": "object"
-        "properties": {
-          "comment": {
-            "description": "a detailed comment explaining the issue. structure your comment to clearly state the problem, its impact, and a recommended solution.",
-            "examples": [
-              "Problem: The code uses a traditional for-loop to iterate over an array.\nImpact: While functional, this is not the most idiomatic or readable approach in Go. It is more verbose and slightly more prone to off-by-one errors.\nSolution: Use a ` + "`" + `for ... range` + "`" + ` loop for simpler, more declarative iteration.",
-            ],
-            "type": "string"
-          },
-          "corrected_code": {
-            "description": "a corrected version of the code snippet. provide this if it's the clearest way to communicate the suggested change.",
-            "examples": [
-              "for _, item := range items {\n\tprocessItem(item);\n}"
-            ],
-            "type": "string"
-          },
-          "hunk_headers": {
-            "description": "the diff hunk header shown prior to the block of code that is being commented on. should not contain the body of the diff hunk",
-            "examples": [
-              "diff --git a/cmd/askai/codereview/codereview.go b/cmd/askai/codereview/codereview.go\nnew file mode 100644\nindex 0000000..b9e09f4\n--- /dev/null\n+++ b/cmd/askai/codereview/codereview.go\n@@ -0,0 +1,140 @@"
-            ],
-            "type": "string"
-          },
-          "severity": {
-            "description": "the severity of the issue.\n- blocker: Must be fixed before merge (e.g., bugs, security flaws).\n- suggestion: Recommended improvement (e.g., refactoring for clarity).\n- nitpick: Minor, non-critical feedback.",
-            "enum": [
-              "blocker",
-              "suggestion",
-              "nitpick"
-            ],
-            "type": "string"
-          },
-          "snippet": {
-            "description": "an exact, possibly multi-line snippet of the code for which this note applies.",
-            "examples": [
-              "for (int i = 0; i < items.len; i++) {\n\tprocessItem(items[i]);\n}"
-            ],
-            "type": "string"
-          }
-        }
-        "required": [ "comment", "hunk_headers", "severity", "snippet" ]
-      ],
-      "type": "array"
-    }
-  },
-  "title": "code_review",
-  "type": "object"
-}
+` + OutputSchema + `
 ~~~
-
-Do not include fences (ie: triple backtick) around the json, just output pure json as it will be parsed directly.
 `
 )
+
+// SchemaJSON was created because the openai api needs somthing that implements
+// MarshalJSON for its schema and we just want to use a raw string to allow us
+// to supply the examples keyword.
+type SchemaJSON string
+
+func (s SchemaJSON) MarshalJSON() ([]byte, error) {
+	return []byte(s), nil
+}
 
 func New(cfg *config.Config) *cobra.Command {
 	var req openai.ChatCompletionRequest
@@ -146,6 +166,15 @@ func New(cfg *config.Config) *cobra.Command {
 					Role:    openai.ChatMessageRoleUser,
 					Content: codeDiff,
 				},
+			}
+
+			req.ResponseFormat = &openai.ChatCompletionResponseFormat{
+				JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
+					Name:   "code_review",
+					Schema: OutputSchema,
+					Strict: true,
+				},
+				Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
 			}
 
 			err = chatcompletion.Send(
