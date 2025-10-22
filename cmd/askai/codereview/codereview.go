@@ -122,9 +122,10 @@ func New(cfg *config.Config) *cobra.Command {
 	var req openai.ChatCompletionRequest
 
 	cmd := cobra.Command{
-		Use:   "cr",
-		Short: `Ask AI to perform a code review`,
-		Args:  cobra.ExactArgs(2),
+		Use:     "codereview",
+		Aliases: []string{"cr"},
+		Short:   `Ask AI to perform a code review`,
+		Args:    cobra.ExactArgs(2),
 		Example: `  # review between 2 commits
   askai cr e43ddd4e1848df08dc0141d0abe8eb544b58878a 0a8a46974a721caa2a0275b442980d26e2a94227
 `,
