@@ -33,45 +33,68 @@ You are performing a code review as a senior developer of the attached diff. If 
 
 ## Output format:
 
-Provide your review in the following YAML structure:
+Provide your review in JSON format following the schema:
 
-~~~yaml
-# A list of all issues found in the code review. If no issues are found, return an empty list.
-issues:
-- # REQUIRED: The severity of the issue. Must be one of: blocker, suggestion, nitpick.
-  # - blocker: Must be fixed before merge (e.g., bugs, security flaws).
-  # - suggestion: Recommended improvement (e.g., refactoring for clarity).
-  # - nitpick: Minor, non-critical feedback.
-  severity: suggestion
-  # REQUIRED: A detailed comment explaining the issue.
-  # Structure your comment to clearly state the Problem, its Impact, and a recommended Solution.
-  comment: |
-    Problem: The code uses a traditional for-loop to iterate over an array.
-    Impact: While functional, this is not the most idiomatic or readable approach in Go. It is more verbose and slightly more prone to off-by-one errors.
-    Solution: Use a ` + "`" + `for ... range` + "`" + ` loop for simpler, more declarative iteration.
-  # OPTIONAL: A corrected version of the code snippet.
-  # Provide this if it's the clearest way to communicate the suggested change.
-  corrected_code: |
-    for _, item := range items {
-      processItem(item);
+~~~json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/product.schema.json",
+  "description": "a code review",
+  "properties": {
+    "issues": {
+      "description": "a list of all issues found in the code review. if no issues are found, return an empty list.",
+      "items": [
+        "type": "object"
+        "properties": {
+          "comment": {
+            "description": "a detailed comment explaining the issue. structure your comment to clearly state the problem, its impact, and a recommended solution.",
+            "examples": [
+              "Problem: The code uses a traditional for-loop to iterate over an array.\nImpact: While functional, this is not the most idiomatic or readable approach in Go. It is more verbose and slightly more prone to off-by-one errors.\nSolution: Use a ` + "`" + `for ... range` + "`" + ` loop for simpler, more declarative iteration.",
+            ],
+            "type": "string"
+          },
+          "corrected_code": {
+            "description": "a corrected version of the code snippet. provide this if it's the clearest way to communicate the suggested change.",
+            "examples": [
+              "for _, item := range items {\n\tprocessItem(item);\n}"
+            ],
+            "type": "string"
+          },
+          "hunk_headers": {
+            "description": "the diff hunk header shown prior to the block of code that is being commented on. should not contain the body of the diff hunk",
+            "examples": [
+              "diff --git a/cmd/askai/codereview/codereview.go b/cmd/askai/codereview/codereview.go\nnew file mode 100644\nindex 0000000..b9e09f4\n--- /dev/null\n+++ b/cmd/askai/codereview/codereview.go\n@@ -0,0 +1,140 @@"
+            ],
+            "type": "string"
+          },
+          "severity": {
+            "description": "the severity of the issue.\n- blocker: Must be fixed before merge (e.g., bugs, security flaws).\n- suggestion: Recommended improvement (e.g., refactoring for clarity).\n- nitpick: Minor, non-critical feedback.",
+            "enum": [
+              "blocker",
+              "suggestion",
+              "nitpick"
+            ],
+            "type": "string"
+          },
+          "snippet": {
+            "description": "an exact, possibly multi-line snippet of the code for which this note applies.",
+            "examples": [
+              "for (int i = 0; i < items.len; i++) {\n\tprocessItem(items[i]);\n}"
+            ],
+            "type": "string"
+          }
+        }
+        "required": [ "comment", "hunk_headers", "severity", "snippet" ]
+      ],
+      "type": "array"
     }
-  # REQUIRED: The diff hunk header shown prior to the block of code that is being commented on.
-  hunk_headers: |
-    diff --git a/cmd/askai/codereview/codereview.go b/cmd/askai/codereview/codereview.go
-    new file mode 100644
-    index 0000000..b9e09f4
-    --- /dev/null
-    +++ b/cmd/askai/codereview/codereview.go
-    @@ -0,0 +1,140 @@
-  # REQUIRED: An exact, possibly multi-line snippet of the code for which this note applies.
-  # Use the ` + "`" + `|` + "`" + ` character for a literal block.
-  snippet: |
-    for (int i = 0; i < items.len; i++) {
-      processItem(items[i]);
-    }
+  },
+  "title": "code_review",
+  "type": "object"
+}
 ~~~
 
-Do not include fences around the yaml, just output pure yaml as it will be parsed directly.
+Do not include fences (ie: triple backtick) around the json, just output pure json as it will be parsed directly.
 `
 )
 
