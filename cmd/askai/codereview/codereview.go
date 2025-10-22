@@ -31,20 +31,14 @@ You are performing a code review as a senior developer of the attached diff. If 
 * Vague Generalities: Avoid generic advice like "consider performance." Instead, point to a specific line or block and explain why it might be a performance issue.
 * Explicitly ignored findings with justification: Code may be annotated with a label indicating a finding should be ignored (ie: 'nolint: errcheck'). This indicates the finding has already been evaluated and does not need further comment.
 
-## Output Format:
+## Output format:
 
 Provide your review in the following YAML structure:
 
 ~~~yaml
 # A list of all issues found in the code review. If no issues are found, return an empty list.
 issues:
-- # REQUIRED: An exact, possibly multi-line snippet of the code for which this note applies.
-  # Use the ` + "`" + `|` + "`" + ` character for a literal block.
-  snippet: |
-    for (int i = 0; i < items.len; i++) {
-      processItem(items[i]);
-    }
-  # REQUIRED: The severity of the issue. Must be one of: blocker, suggestion, nitpick.
+- # REQUIRED: The severity of the issue. Must be one of: blocker, suggestion, nitpick.
   # - blocker: Must be fixed before merge (e.g., bugs, security flaws).
   # - suggestion: Recommended improvement (e.g., refactoring for clarity).
   # - nitpick: Minor, non-critical feedback.
@@ -60,6 +54,20 @@ issues:
   corrected_code: |
     for _, item := range items {
       processItem(item);
+    }
+  # REQUIRED: The diff hunk header shown prior to the block of code that is being commented on.
+  hunk_headers: |
+    diff --git a/cmd/askai/codereview/codereview.go b/cmd/askai/codereview/codereview.go
+    new file mode 100644
+    index 0000000..b9e09f4
+    --- /dev/null
+    +++ b/cmd/askai/codereview/codereview.go
+    @@ -0,0 +1,140 @@
+  # REQUIRED: An exact, possibly multi-line snippet of the code for which this note applies.
+  # Use the ` + "`" + `|` + "`" + ` character for a literal block.
+  snippet: |
+    for (int i = 0; i < items.len; i++) {
+      processItem(items[i]);
     }
 ~~~
 
