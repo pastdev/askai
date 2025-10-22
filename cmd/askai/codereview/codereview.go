@@ -127,7 +127,10 @@ func New(cfg *config.Config) *cobra.Command {
 		Short:   `Ask AI to perform a code review`,
 		Args:    cobra.ExactArgs(2),
 		Example: `  # review between 2 commits
-  askai cr e43ddd4e1848df08dc0141d0abe8eb544b58878a 0a8a46974a721caa2a0275b442980d26e2a94227
+  askai codereview e43ddd4e1848df08dc0141d0abe8eb544b58878a 0a8a46974a721caa2a0275b442980d26e2a94227
+
+  # use HEAD as one of the commits with trace level logging and grok endpoint
+  askai cr e43ddd4e1848df08dc0141d0abe8eb544b58878a HEAD --endpoint grok --log trace
 `,
 		//nolint: revive // required to match upstream signature
 		RunE: func(cmd *cobra.Command, args []string) error {
