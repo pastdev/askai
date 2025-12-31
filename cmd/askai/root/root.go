@@ -1,6 +1,7 @@
 package root
 
 import (
+	"github.com/pastdev/askai/cmd/askai/codereview"
 	"github.com/pastdev/askai/cmd/askai/complete"
 	cmdcfg "github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/cmd/askai/embedding"
@@ -34,6 +35,7 @@ func New() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logFormat, "log-format", "pretty", "log format (pretty|json)")
 
 	cmd.AddCommand(complete.New(cfg))
+	cmd.AddCommand(codereview.New(cfg))
 	cmd.AddCommand(embedding.New(cfg))
 	cmd.AddCommand(image.New(cfg))
 	cmd.AddCommand(models.New(cfg))
