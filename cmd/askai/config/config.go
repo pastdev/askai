@@ -1,9 +1,11 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
+	yaml2json "github.com/invopop/yaml"
 	pkgcfg "github.com/pastdev/askai/pkg/config"
 	cobracfg "github.com/pastdev/configloader/pkg/cobra"
 	cfgldr "github.com/pastdev/configloader/pkg/config"
@@ -65,15 +67,15 @@ func AddConfig(root *cobra.Command) *Config {
 			DefaultSources: cfgldr.Sources[pkgcfg.Config]{
 				cfgldr.DirSource[pkgcfg.Config]{
 					Path:      SystemConfigDir,
-					Unmarshal: cfgldr.YamlValueTemplateUnmarshal[pkgcfg.Config](nil),
+					Unmarshal: YamlToJsonWithValueTemplateUnmarshal[pkgcfg.Config](),
 				},
 				cfgldr.DirSource[pkgcfg.Config]{
 					Path:      UserConfigDir,
-					Unmarshal: cfgldr.YamlValueTemplateUnmarshal[pkgcfg.Config](nil),
+					Unmarshal: YamlToJsonWithValueTemplateUnmarshal[pkgcfg.Config](),
 				},
 				cfgldr.DirSource[pkgcfg.Config]{
 					Path:      DirectoryConfigDir,
-					Unmarshal: cfgldr.YamlValueTemplateUnmarshal[pkgcfg.Config](nil),
+					Unmarshal: YamlToJsonWithValueTemplateUnmarshal[pkgcfg.Config](),
 				},
 			},
 		},
@@ -106,4 +108,35 @@ func AddConfig(root *cobra.Command) *Config {
 	root.PersistentFlags().StringVar(&cfg.endpoint, "endpoint", "", "the endpoint to use")
 
 	return &cfg
+}
+
+// YamlToJsonWithValueTemplateUnmarshal is an Unmarshal function that converts
+// yaml to json, then unmarshals using the json unmarshal so that json tags are
+// respected, then processes each _value_ individually through the go template
+// engine then reserializes the result to json before unmarshaling into T.
+func YamlToJsonWithValueTemplateUnmarshal[T any]() func(b []byte, cfg *T) error {
+	return func(b []byte, cfg *T) error {
+		var valueMap any
+		err := yaml2json.Unmarshal(b, &valueMap)
+		if err != nil {
+			return fmt.Errorf("yamlunmarshal to valueMap: %w", err)
+		}
+
+		// walk the map and template each value
+		err = cfgldr.Walk(cfgldr.NewTemplate(cfgldr.DefaultFuncMap()), valueMap)
+		if err != nil {
+			return fmt.Errorf("yamlunmarshal walk valueMap: %w", err)
+		}
+
+		data, err := json.Marshal(valueMap)
+		if err != nil {
+			return fmt.Errorf("yamlunmarshal from valueMap: %w", err)
+		}
+
+		err = json.Unmarshal(data, cfg)
+		if err != nil {
+			return fmt.Errorf("yamlunmarshal to type: %w", err)
+		}
+		return nil
+	}
 }

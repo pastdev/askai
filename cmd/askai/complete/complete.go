@@ -12,9 +12,11 @@ import (
 	"strings"
 
 	"dario.cat/mergo"
+	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/pkg/chatcompletion"
-	"github.com/sashabaranov/go-openai"
+	"github.com/pastdev/askai/pkg/log"
 	"github.com/spf13/cobra"
 )
 
@@ -75,10 +77,11 @@ func encodeAttachments(attachements []string) (string, error) {
 }
 
 func New(cfg *config.Config) *cobra.Command {
-	var req openai.ChatCompletionRequest
+	var req oai.ChatCompletionNewParams
 	var conversation string
 	var logItBias string
 	var output string
+	var stream bool
 	var attachments []string
 
 	cmd := cobra.Command{
@@ -111,14 +114,15 @@ func New(cfg *config.Config) *cobra.Command {
 		//nolint: revive // required to match upstream signature
 		RunE: func(cmd *cobra.Command, args []string) error {
 			endpoint, err := cfg.EndpointConfig()
+			log.Trace().Interface("endpoint", endpoint).Msg("CODE_REVIEW_CATCH_ME")
 			if err != nil {
 				return fmt.Errorf("new client: %w", err)
 			}
 
-			client := endpoint.NewClient()
+			client := endpoint.NewOaiClient()
 			ctx := context.Background()
 
-			defaults := openai.ChatCompletionRequest{}
+			defaults := oai.ChatCompletionNewParams{}
 			if endpoint.ChatCompletionDefaults != nil {
 				defaults = *endpoint.ChatCompletionDefaults
 			}
@@ -130,24 +134,24 @@ func New(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			if req.TopLogProbs > 0 {
-				req.LogProbs = true
+			if req.TopLogprobs.Valid() && req.TopLogprobs.Value > 0 {
+				req.Logprobs = param.NewOpt(true)
 			}
 
-			if req.LogProbs {
+			if req.Logprobs.Valid() && req.Logprobs.Value {
 				// obviously cant use "content" for output or you wouldn't see
 				// the log probs you explicitly asked for
 				output = "raw"
 			}
 
-			var writer chatcompletion.ResponseWriter
+			var writer chatcompletion.ResponseWriterOai
 			switch output {
 			case "content":
-				writer = &chatcompletion.ContentResponseWriter{W: os.Stdout}
+				writer = &chatcompletion.ContentResponseWriterOai{W: os.Stdout}
 			case "raw":
-				writer = &chatcompletion.RawResponseWriter{W: os.Stdout}
+				writer = &chatcompletion.RawResponseWriterOai{W: os.Stdout}
 			case "recap":
-				writer = &chatcompletion.RecapResponseWriter{W: os.Stdout}
+				writer = &chatcompletion.RecapResponseWriterOai{W: os.Stdout}
 			}
 
 			if len(attachments) > 0 {
@@ -155,15 +159,16 @@ func New(cfg *config.Config) *cobra.Command {
 					if i < 0 {
 						return errors.New("no user message to append attements to")
 					}
-					if req.Messages[i].Role == openai.ChatMessageRoleUser {
+					if req.Messages[i].OfUser != nil {
 						data, err := encodeAttachments(attachments)
 						if err != nil {
 							return err
 						}
-						req.Messages[i].Content = fmt.Sprintf(
-							"%s\n\n########## base64 encoded attachments ##########\n%s",
-							req.Messages[i].Content,
-							data)
+						req.Messages[i] = oai.UserMessage(
+							fmt.Sprintf(
+								"%s\n\n########## base64 encoded attachments ##########\n%s",
+								req.Messages[i].OfUser.Content.OfString.Value,
+								data))
 						break
 					}
 				}
@@ -176,21 +181,22 @@ func New(cfg *config.Config) *cobra.Command {
 				}
 				req.Messages = append(defaults.Messages, req.Messages...)
 
-				err = chatcompletion.Send(ctx, client, req, writer)
+				err = chatcompletion.SendOai(ctx, client, req, stream, writer)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
 				}
 			} else {
-				conv, err := chatcompletion.LoadPersistentConversation(conversation, defaults)
+				conv, err := chatcompletion.LoadPersistentConversationOai(conversation, defaults)
 				if err != nil {
 					return fmt.Errorf("load %s: %w", conversation, err)
 				}
 
-				err = chatcompletion.SendReply(
+				err = chatcompletion.SendReplyOai(
 					ctx,
 					client,
 					&conv,
 					req,
+					stream,
 					writer)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
@@ -218,21 +224,21 @@ func New(cfg *config.Config) *cobra.Command {
 		&logItBias,
 		"logit-bias",
 		"",
-		"A json map of string to int where they key is the token (can be obtained using: `askai tokens encode`) and the value is a bias between -100 (prohibit) and 100 (encourage)")
-	cmd.Flags().BoolVar(
-		&req.LogProbs,
+		"A json map of string to int where they key is the token (can be obtained using: 'askai tokens encode') and the value is a bias between -100 (prohibit) and 100 (encourage)")
+	OptionalVar(
+		cmd.Flags(),
+		&req.Logprobs,
 		"logprobs",
-		false,
 		"Returns the log probabilities of each output token returned in the content of message")
-	cmd.Flags().IntVar(
+	OptionalVar(
+		cmd.Flags(),
 		&req.MaxTokens,
 		"max-tokens",
-		0,
 		"The maximum number of tokens that can be generated in the chat completion (deprecated in favor of max-completion-tokens, but older servers may still only support this)")
-	cmd.Flags().IntVar(
+	OptionalVar(
+		cmd.Flags(),
 		&req.MaxCompletionTokens,
 		"max-completion-tokens",
-		0,
 		"The maximum number of tokens that can be generated in the chat completion")
 	cmd.Flags().StringVar(
 		&req.Model,
@@ -241,7 +247,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"AI model to use")
 	MessageArrayVarP(
 		cmd.Flags(),
-		"",
+		nil,
 		&req.Messages,
 		"message",
 		"m",
@@ -249,7 +255,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"One or more complete json messages")
 	MessageArrayVarP(
 		cmd.Flags(),
-		"user",
+		oai.UserMessage,
 		&req.Messages,
 		"user",
 		"u",
@@ -257,7 +263,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"One or more user content messages")
 	MessageArrayVarP(
 		cmd.Flags(),
-		"system",
+		oai.SystemMessage,
 		&req.Messages,
 		"system",
 		"s",
@@ -265,7 +271,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"One or more system content messages")
 	MessageArrayVarP(
 		cmd.Flags(),
-		"assistant",
+		oai.AssistantMessage,
 		&req.Messages,
 		"assistant",
 		"a",
@@ -277,20 +283,19 @@ func New(cfg *config.Config) *cobra.Command {
 		"content",
 		"Format of output, one of: content, raw, recap")
 	cmd.Flags().BoolVar(
-		&req.Stream,
+		&stream,
 		"stream",
 		false,
 		"Stream the response")
-	cmd.Flags().Float32VarP(
+	OptionalVar(
+		cmd.Flags(),
 		&req.Temperature,
 		"temperature",
-		"t",
-		0,
 		"Temperature, zero is not set, so if you want zero, use 0.0000001 or similar")
-	cmd.Flags().IntVar(
-		&req.TopLogProbs,
+	OptionalVar(
+		cmd.Flags(),
+		&req.TopLogprobs,
 		"top-logprobs",
-		0,
 		""+
 			"An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability. "+
 			"Implies --logprobs")

@@ -9,6 +9,8 @@ import (
 	"net/http/httputil"
 	"os"
 
+	oai "github.com/openai/openai-go/v3"
+	oaiopt "github.com/openai/openai-go/v3/option"
 	"github.com/pastdev/askai/pkg/log"
 	"github.com/sashabaranov/go-openai"
 )
@@ -31,16 +33,16 @@ type Config struct {
 
 // EndpointConfig is a configuration of a client.
 type EndpointConfig struct {
-	APIType                openai.APIType                `json:"api_type" yaml:"api_type"`
-	APIVersion             string                        `json:"api_version" yaml:"api_version"`
-	AuthToken              string                        `json:"auth_token" yaml:"auth_token"`
-	BaseURL                string                        `json:"base_url" yaml:"base_url"`
-	ChatCompletionDefaults *openai.ChatCompletionRequest `json:"chat_completion_defaults" yaml:"chat_completion_defaults"`
-	CACerts                string                        `json:"cacerts" yaml:"cacerts"`
-	EmptyMessagesLimit     uint                          `json:"empty_messages_limit" yaml:"empty_messages_limit"`
-	ImageDefaults          *openai.ImageRequest          `json:"image_defaults" yaml:"image_defaults"`
-	InsecureSkipTLS        bool                          `json:"insecure_skip_tls" yaml:"insecure_skip_tls"`
-	OrgID                  string                        `json:"org_id" yaml:"org_id"`
+	APIType                openai.APIType               `json:"api_type" yaml:"api_type"`
+	APIVersion             string                       `json:"api_version" yaml:"api_version"`
+	AuthToken              string                       `json:"auth_token" yaml:"auth_token"`
+	BaseURL                string                       `json:"base_url" yaml:"base_url"`
+	ChatCompletionDefaults *oai.ChatCompletionNewParams `json:"chat_completion_defaults" yaml:"chat_completion_defaults"`
+	CACerts                string                       `json:"cacerts" yaml:"cacerts"`
+	EmptyMessagesLimit     uint                         `json:"empty_messages_limit" yaml:"empty_messages_limit"`
+	ImageDefaults          *openai.ImageRequest         `json:"image_defaults" yaml:"image_defaults"`
+	InsecureSkipTLS        bool                         `json:"insecure_skip_tls" yaml:"insecure_skip_tls"`
+	OrgID                  string                       `json:"org_id" yaml:"org_id"`
 }
 
 type loggingTransport struct {
@@ -85,6 +87,12 @@ func (c *EndpointConfig) NewClient() *openai.Client {
 		cfg.EmptyMessagesLimit = c.EmptyMessagesLimit
 	}
 
+	cfg.HTTPClient = c.NewHTTPClient()
+
+	return openai.NewClientWithConfig(cfg)
+}
+
+func (c *EndpointConfig) NewHTTPClient() *http.Client {
 	tlsConfig := &tls.Config{
 		//nolint: gosec // allow _explicit_ user configured skipping
 		InsecureSkipVerify: c.InsecureSkipTLS,
@@ -116,9 +124,23 @@ func (c *EndpointConfig) NewClient() *openai.Client {
 		transport = &loggingTransport{wrapped: transport}
 	}
 
-	cfg.HTTPClient = &http.Client{Transport: transport}
+	return &http.Client{Transport: transport}
+}
 
-	return openai.NewClientWithConfig(cfg)
+func (c *EndpointConfig) NewOaiClient() oai.Client {
+	opts := []oaiopt.RequestOption{
+		oaiopt.WithHTTPClient(c.NewHTTPClient()),
+	}
+	if c.BaseURL != "" {
+		opts = append(opts, oaiopt.WithBaseURL(c.BaseURL))
+	}
+	if c.AuthToken != "" {
+		opts = append(opts, oaiopt.WithAPIKey(c.AuthToken))
+	}
+	if c.OrgID != "" {
+		opts = append(opts, oaiopt.WithOrganization(c.OrgID))
+	}
+	return oai.NewClient(opts...)
 }
 
 func (s *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {

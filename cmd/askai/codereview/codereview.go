@@ -6,10 +6,10 @@ import (
 	"os"
 
 	"dario.cat/mergo"
+	oai "github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/pkg/chatcompletion"
 	"github.com/pastdev/askai/pkg/git"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 )
 
@@ -119,7 +119,7 @@ func (s SchemaJSON) MarshalJSON() ([]byte, error) {
 }
 
 func New(cfg *config.Config) *cobra.Command {
-	var req openai.ChatCompletionRequest
+	var req oai.ChatCompletionNewParams
 
 	cmd := cobra.Command{
 		Use:     "codereview",
@@ -142,15 +142,15 @@ func New(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("new client: %w", err)
 			}
 
-			client := endpoint.NewClient()
+			client := endpoint.NewOaiClient()
 			ctx := context.Background()
 
-			defaults := openai.ChatCompletionRequest{}
+			defaults := oai.ChatCompletionNewParams{}
 			if endpoint.ChatCompletionDefaults != nil {
 				defaults = *endpoint.ChatCompletionDefaults
 			}
 
-			req.Tools = []openai.Tool{}
+			req.Tools = []oai.ChatCompletionToolUnionParam{}
 
 			err = mergo.Merge(&req, defaults)
 			if err != nil {
@@ -161,31 +161,27 @@ func New(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("diff: %w", err)
 			}
-			req.Messages = []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: SystemPrompt,
-				},
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: codeDiff,
+			req.Messages = []oai.ChatCompletionMessageParamUnion{
+				oai.SystemMessage(SystemPrompt),
+				oai.UserMessage(codeDiff),
+			}
+
+			req.ResponseFormat = oai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONSchema: &oai.ResponseFormatJSONSchemaParam{
+					JSONSchema: oai.ResponseFormatJSONSchemaJSONSchemaParam{
+						Name:   "code_review",
+						Schema: OutputSchema,
+						Strict: oai.Bool(true),
+					},
 				},
 			}
 
-			req.ResponseFormat = &openai.ChatCompletionResponseFormat{
-				JSONSchema: &openai.ChatCompletionResponseFormatJSONSchema{
-					Name:   "code_review",
-					Schema: OutputSchema,
-					Strict: true,
-				},
-				Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
-			}
-
-			err = chatcompletion.Send(
+			err = chatcompletion.SendOai(
 				ctx,
 				client,
 				req,
-				&chatcompletion.ContentResponseWriter{W: os.Stdout})
+				false,
+				&chatcompletion.ContentResponseWriterOai{W: os.Stdout})
 			if err != nil {
 				return fmt.Errorf("complete chat: %w", err)
 			}

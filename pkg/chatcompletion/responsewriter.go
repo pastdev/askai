@@ -124,13 +124,13 @@ func (b *RecapResponseWriter) WriteStream(res openai.ChatCompletionStreamRespons
 		}
 	}
 
-	_, err := fmt.Fprint(b.W, res.Choices[0].Delta.Role)
+	_, err := fmt.Fprint(b.W, res.Choices[0].Delta.Content)
 	if err != nil {
 		return fmt.Errorf("recapresponsewriter writestream: %w", err)
 	}
 
 	if res.Choices[0].FinishReason != openai.FinishReasonNull {
-		_, err := fmt.Fprintf(b.W, "%s: ", res.Choices[0].Delta.Role)
+		_, err := fmt.Fprint(b.W, "\n")
 		if err != nil {
 			return fmt.Errorf("recapresponsewriter writestream end: %w", err)
 		}
