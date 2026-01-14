@@ -142,7 +142,7 @@ func New(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("new client: %w", err)
 			}
 
-			client := endpoint.NewOaiClient()
+			client := endpoint.NewClient()
 			ctx := context.Background()
 
 			defaults := oai.ChatCompletionNewParams{}
@@ -176,12 +176,12 @@ func New(cfg *config.Config) *cobra.Command {
 				},
 			}
 
-			err = chatcompletion.SendOai(
+			err = chatcompletion.Send(
 				ctx,
 				client,
 				req,
 				false,
-				&chatcompletion.ContentResponseWriterOai{W: os.Stdout})
+				&chatcompletion.ContentResponseWriter{W: os.Stdout})
 			if err != nil {
 				return fmt.Errorf("complete chat: %w", err)
 			}

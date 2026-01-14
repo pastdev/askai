@@ -3,24 +3,22 @@ package chatcompletion
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"os/exec"
 
+	oai "github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
-	"github.com/sashabaranov/go-openai"
 )
 
 type Conversation interface {
-	Continue(openai.ChatCompletionRequest) (openai.ChatCompletionRequest, error)
+	Continue(oai.ChatCompletionNewParams) (oai.ChatCompletionNewParams, error)
 	UpdateResponse(string) error
 }
 
 func HandleBufferResponse(
 	ctx context.Context,
-	client *openai.Client,
-	req openai.ChatCompletionRequest,
+	client oai.Client,
+	req oai.ChatCompletionNewParams,
 	writer ResponseWriter,
 ) error {
 	err := writer.WriteRequest(req)
@@ -28,14 +26,14 @@ func HandleBufferResponse(
 		return fmt.Errorf("write request: %w", err)
 	}
 
-	resp, err := client.CreateChatCompletion(ctx, req)
+	resp, err := client.Chat.Completions.New(ctx, req)
 	if err != nil {
 		return fmt.Errorf("chat completion: %w", err)
 	}
 
 	log.Debug().Interface("resp", resp).Msg("before invoking tool")
 	if len(resp.Choices[0].Message.ToolCalls) > 0 {
-		err = handleToolCalls(ctx, client, req, resp, writer)
+		err = handleToolCalls(ctx, client, req, resp, false, writer)
 		if err != nil {
 			return fmt.Errorf("handle tool calls: %w", err)
 		}
@@ -51,13 +49,14 @@ func HandleBufferResponse(
 
 func handleToolCalls(
 	ctx context.Context,
-	client *openai.Client,
-	req openai.ChatCompletionRequest,
-	resp openai.ChatCompletionResponse,
+	client oai.Client,
+	req oai.ChatCompletionNewParams,
+	resp *oai.ChatCompletion,
+	stream bool,
 	writer ResponseWriter,
 ) error {
 	toolCalls := resp.Choices[0].Message.ToolCalls
-	toolCallCompletionMessages := make([]openai.ChatCompletionMessage, 0, len(toolCalls))
+	toolCallCompletionMessages := make([]oai.ChatCompletionMessageParamUnion, 0, len(toolCalls))
 
 	for _, toolCall := range toolCalls {
 		log.Debug().Interface("toolCall", toolCall).Msg("invoking tool")
@@ -93,22 +92,12 @@ func handleToolCalls(
 
 		toolCallCompletionMessages = append(
 			toolCallCompletionMessages,
-			openai.ChatCompletionMessage{
-				Content: outBuf.String(),
-				// appears from ollama example, that name is used instead of
-				// tool_call_id to match:
-				//   https://github.com/ollama/ollama-python/blob/aec125c77345b30d53309f5726226b5473159219/examples/tools.py#L77
-				// this bug seems to confirm that:
-				//   https://github.com/ollama/ollama/issues/7510
-				Name:       toolCall.Function.Name,
-				Role:       openai.ChatMessageRoleTool,
-				ToolCallID: toolCall.ID,
-			})
+			oai.ToolMessage(outBuf.String(), toolCall.ID))
 	}
 
-	req.Messages = append(req.Messages, resp.Choices[0].Message)
+	req.Messages = append(req.Messages, resp.Choices[0].Message.ToParam())
 	req.Messages = append(req.Messages, toolCallCompletionMessages...)
-	err := Send(ctx, client, req, writer)
+	err := Send(ctx, client, req, stream, writer)
 	if err != nil {
 		return fmt.Errorf("tool call completion request: %w", err)
 	}
@@ -118,8 +107,8 @@ func handleToolCalls(
 
 func HandleStreamResponse(
 	ctx context.Context,
-	client *openai.Client,
-	req openai.ChatCompletionRequest,
+	client oai.Client,
+	req oai.ChatCompletionNewParams,
 	writer ResponseWriter,
 ) error {
 	err := writer.WriteRequest(req)
@@ -127,38 +116,59 @@ func HandleStreamResponse(
 		return fmt.Errorf("write request: %w", err)
 	}
 
-	strm, err := client.CreateChatCompletionStream(ctx, req)
-	if err != nil {
-		return fmt.Errorf("create completion stream: %w", err)
-	}
+	strm := client.Chat.Completions.NewStreaming(ctx, req)
 	defer func() { _ = strm.Close() }()
 
-	for {
-		res, err := strm.Recv()
-		if errors.Is(err, io.EOF) {
-			log.Trace().Err(err).Msg("reached end of streaming response")
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("stream response: %w", err)
+	acc := oai.ChatCompletionAccumulator{}
+
+	phase := WriteStreamStart
+	for strm.Next() {
+		chunk := strm.Current()
+		acc.AddChunk(chunk)
+
+		if content, ok := acc.JustFinishedContent(); ok {
+			phase = WriteStreamFinish
+			println("Content stream finished:", content)
 		}
 
-		log.Trace().Interface("res", res).Msg("recieved stream chunk")
-		err = writer.WriteStream(res)
-		if err != nil {
-			return fmt.Errorf("write response: %w", err)
+		// CODE_REVIEW_CATCH_ME: what do i need to do for these?
+		// // if using tool calls
+		// if tool, ok := acc.JustFinishedToolCall(); ok {
+		// 	println("Tool call stream finished:", tool.Index, tool.Name, tool.Arguments)
+		// }
+
+		// if refusal, ok := acc.JustFinishedRefusal(); ok {
+		// 	println("Refusal stream finished:", refusal)
+		// }
+
+		if len(chunk.Choices) > 0 {
+			log.Trace().Interface("chunk", chunk).Msg("recieved stream chunk")
+			err = writer.WriteStream(chunk, phase)
+			if err != nil {
+				return fmt.Errorf("write response: %w", err)
+			}
 		}
+
+		phase = WriteStreamContinue
 	}
+
+	if strm.Err() != nil {
+		return fmt.Errorf("create completion stream: %w", strm.Err())
+	}
+
+	return nil
 }
 
 func Send(
 	ctx context.Context,
-	client *openai.Client,
-	req openai.ChatCompletionRequest,
+	client oai.Client,
+	req oai.ChatCompletionNewParams,
+	stream bool,
 	writer ResponseWriter,
 ) error {
 	var err error
-	log.Debug().Bool("stream", req.Stream).Interface("messages", req.Messages).Msg("the messages")
-	if req.Stream {
+	log.Debug().Bool("stream", stream).Interface("messages", req.Messages).Msg("the messages")
+	if stream {
 		err = HandleStreamResponse(ctx, client, req, writer)
 	} else {
 		err = HandleBufferResponse(ctx, client, req, writer)
@@ -171,9 +181,10 @@ func Send(
 
 func SendReply(
 	ctx context.Context,
-	client *openai.Client,
+	client oai.Client,
 	conversation Conversation,
-	reply openai.ChatCompletionRequest,
+	reply oai.ChatCompletionNewParams,
+	stream bool,
 	writer ResponseWriter,
 ) error {
 	req, err := conversation.Continue(reply)
@@ -182,7 +193,7 @@ func SendReply(
 	}
 
 	buf := NewResponseWriterContentBuffer(writer)
-	err = Send(ctx, client, req, buf)
+	err = Send(ctx, client, req, stream, buf)
 	if err != nil {
 		return fmt.Errorf("send: %w", err)
 	}

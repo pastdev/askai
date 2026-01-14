@@ -7,20 +7,22 @@ import (
 	"os"
 	"path/filepath"
 
+	oai "github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
-	"github.com/sashabaranov/go-openai"
 )
+
+var _ Conversation = &PersistentConversation{}
 
 type PersistentConversation struct {
 	name    string
-	request openai.ChatCompletionRequest
+	request oai.ChatCompletionNewParams
 }
 
 // LoadPersistentConversation will load an existing conversation by the supplied
 // name or create it if it does not exist.
 func LoadPersistentConversation(
 	name string,
-	defaults openai.ChatCompletionRequest,
+	defaults oai.ChatCompletionNewParams,
 ) (PersistentConversation, error) {
 	c := PersistentConversation{name: name}
 
@@ -49,8 +51,8 @@ func LoadPersistentConversation(
 }
 
 func (c *PersistentConversation) Continue(
-	reply openai.ChatCompletionRequest,
-) (openai.ChatCompletionRequest, error) {
+	reply oai.ChatCompletionNewParams,
+) (oai.ChatCompletionNewParams, error) {
 	// originally:
 	//   messages := append(c.request.Messages, reply.Messages...)
 	// but append actually modifies and returns the first argument so it was
@@ -59,7 +61,7 @@ func (c *PersistentConversation) Continue(
 	//   https://github.com/pastdev/askai/issues/1
 	// so we need to create a new array to avoid this
 	messages := make(
-		[]openai.ChatCompletionMessage,
+		[]oai.ChatCompletionMessageParamUnion,
 		0,
 		len(c.request.Messages)+len(reply.Messages))
 	messages = append(messages, c.request.Messages...)
@@ -67,7 +69,7 @@ func (c *PersistentConversation) Continue(
 
 	err := deepCopy(&c.request, &reply)
 	if err != nil {
-		return openai.ChatCompletionRequest{}, fmt.Errorf("deep copy reply: %w", err)
+		return oai.ChatCompletionNewParams{}, fmt.Errorf("deep copy reply: %w", err)
 	}
 	c.request.Messages = messages
 	return c.request, nil
@@ -76,10 +78,7 @@ func (c *PersistentConversation) Continue(
 func (c PersistentConversation) UpdateResponse(response string) error {
 	c.request.Messages = append(
 		c.request.Messages,
-		openai.ChatCompletionMessage{
-			Role:    openai.ChatMessageRoleAssistant,
-			Content: response,
-		})
+		oai.AssistantMessage(response))
 
 	data, err := json.Marshal(c.request)
 	if err != nil {
@@ -120,7 +119,7 @@ func conversationFile(name string) string {
 }
 
 // deepCopy will copy all public fields from src into dest recursively
-func deepCopy(dest *openai.ChatCompletionRequest, src *openai.ChatCompletionRequest) error {
+func deepCopy(dest *oai.ChatCompletionNewParams, src *oai.ChatCompletionNewParams) error {
 	// Model is not _omitempty_ and we want to preserve the value from the existing
 	// if it is not _explicitly changed_. So we store here and set it after if
 	// needed.

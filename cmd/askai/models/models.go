@@ -23,7 +23,7 @@ func New(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("new client: %w", err)
 			}
 
-			client := endpoint.NewClient()
+			client := endpoint.NewClientLegacy()
 			ctx := context.Background()
 
 			var res any

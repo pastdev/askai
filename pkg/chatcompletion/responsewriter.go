@@ -7,19 +7,28 @@ import (
 	"io"
 	"strings"
 
-	"github.com/sashabaranov/go-openai"
+	oai "github.com/openai/openai-go/v3"
+)
+
+const (
+	WriteStreamStart WriteStreamPhase = iota
+	WriteStreamContinue
+	WriteStreamFinish
 )
 
 var _ ResponseWriter = &ContentResponseWriter{}
+var _ ResponseWriter = &RawResponseWriter{}
+var _ ResponseWriter = &RecapResponseWriter{}
+var _ ResponseWriter = &ResponseWriterContentBuffer{}
 
 type ContentResponseWriter struct {
 	W io.Writer
 }
 
 type ResponseWriter interface {
-	Write(openai.ChatCompletionResponse) error
-	WriteRequest(openai.ChatCompletionRequest) error
-	WriteStream(openai.ChatCompletionStreamResponse) error
+	Write(*oai.ChatCompletion) error
+	WriteRequest(oai.ChatCompletionNewParams) error
+	WriteStream(oai.ChatCompletionChunk, WriteStreamPhase) error
 }
 
 type RawResponseWriter struct {
@@ -31,7 +40,9 @@ type RecapResponseWriter struct {
 	W                io.Writer
 }
 
-func (b *ContentResponseWriter) Write(res openai.ChatCompletionResponse) error {
+type WriteStreamPhase int
+
+func (b *ContentResponseWriter) Write(res *oai.ChatCompletion) error {
 	if len(res.Choices) < 1 {
 		return nil
 	}
@@ -43,11 +54,14 @@ func (b *ContentResponseWriter) Write(res openai.ChatCompletionResponse) error {
 	return nil
 }
 
-func (b *ContentResponseWriter) WriteRequest(_ openai.ChatCompletionRequest) error {
+func (b *ContentResponseWriter) WriteRequest(_ oai.ChatCompletionNewParams) error {
 	return nil
 }
 
-func (b *ContentResponseWriter) WriteStream(res openai.ChatCompletionStreamResponse) error {
+func (b *ContentResponseWriter) WriteStream(
+	res oai.ChatCompletionChunk,
+	_ WriteStreamPhase,
+) error {
 	if len(res.Choices) < 1 {
 		return nil
 	}
@@ -59,7 +73,7 @@ func (b *ContentResponseWriter) WriteStream(res openai.ChatCompletionStreamRespo
 	return nil
 }
 
-func (b *RawResponseWriter) Write(res openai.ChatCompletionResponse) error {
+func (b *RawResponseWriter) Write(res *oai.ChatCompletion) error {
 	err := json.NewEncoder(b.W).Encode(res)
 	if err != nil {
 		return fmt.Errorf("rawresponsewriter write: %w", err)
@@ -67,11 +81,14 @@ func (b *RawResponseWriter) Write(res openai.ChatCompletionResponse) error {
 	return nil
 }
 
-func (b *RawResponseWriter) WriteRequest(_ openai.ChatCompletionRequest) error {
+func (b *RawResponseWriter) WriteRequest(_ oai.ChatCompletionNewParams) error {
 	return nil
 }
 
-func (b *RawResponseWriter) WriteStream(res openai.ChatCompletionStreamResponse) error {
+func (b *RawResponseWriter) WriteStream(
+	res oai.ChatCompletionChunk,
+	_ WriteStreamPhase,
+) error {
 	err := json.NewEncoder(b.W).Encode(res)
 	if err != nil {
 		return fmt.Errorf("rawresponsewriter writestream: %w", err)
@@ -79,7 +96,7 @@ func (b *RawResponseWriter) WriteStream(res openai.ChatCompletionStreamResponse)
 	return nil
 }
 
-func (b *RecapResponseWriter) Write(res openai.ChatCompletionResponse) error {
+func (b *RecapResponseWriter) Write(res *oai.ChatCompletion) error {
 	if len(res.Choices) < 1 {
 		return nil
 	}
@@ -95,14 +112,14 @@ func (b *RecapResponseWriter) Write(res openai.ChatCompletionResponse) error {
 	return nil
 }
 
-func (b *RecapResponseWriter) WriteRequest(req openai.ChatCompletionRequest) error {
+func (b *RecapResponseWriter) WriteRequest(req oai.ChatCompletionNewParams) error {
 	var err error
 	for _, message := range req.Messages {
-		switch message.Role {
-		case openai.ChatMessageRoleAssistant,
-			openai.ChatMessageRoleSystem,
-			openai.ChatMessageRoleUser:
-			_, ierr := fmt.Fprintf(b.W, "%s: %s\n\n", message.Role, message.Content)
+		switch {
+		case message.OfAssistant != nil,
+			message.OfSystem != nil,
+			message.OfUser != nil:
+			_, ierr := fmt.Fprintf(b.W, "%s: %s\n\n", *(message.GetRole()), message.GetContent())
 			err = errors.Join(ierr)
 		}
 	}
@@ -112,12 +129,15 @@ func (b *RecapResponseWriter) WriteRequest(req openai.ChatCompletionRequest) err
 	return nil
 }
 
-func (b *RecapResponseWriter) WriteStream(res openai.ChatCompletionStreamResponse) error {
+func (b *RecapResponseWriter) WriteStream(
+	res oai.ChatCompletionChunk,
+	phase WriteStreamPhase,
+) error {
 	if len(res.Choices) < 1 {
 		return nil
 	}
 
-	if b.streamWriteCount == 0 {
+	if phase == WriteStreamStart {
 		_, err := fmt.Fprintf(b.W, "%s: ", res.Choices[0].Delta.Role)
 		if err != nil {
 			return fmt.Errorf("recapresponsewriter writestream start: %w", err)
@@ -129,10 +149,10 @@ func (b *RecapResponseWriter) WriteStream(res openai.ChatCompletionStreamRespons
 		return fmt.Errorf("recapresponsewriter writestream: %w", err)
 	}
 
-	if res.Choices[0].FinishReason != openai.FinishReasonNull {
+	if phase == WriteStreamFinish {
 		_, err := fmt.Fprint(b.W, "\n")
 		if err != nil {
-			return fmt.Errorf("recapresponsewriter writestream end: %w", err)
+			return fmt.Errorf("recapresponsewriter writestream finish: %w", err)
 		}
 	}
 
@@ -148,7 +168,7 @@ func (b *ResponseWriterContentBuffer) String() string {
 	return b.buf.String()
 }
 
-func (b *ResponseWriterContentBuffer) Write(res openai.ChatCompletionResponse) error {
+func (b *ResponseWriterContentBuffer) Write(res *oai.ChatCompletion) error {
 	err := b.w.Write(res)
 	if err != nil {
 		return fmt.Errorf("pass-thru write: %w", err)
@@ -158,7 +178,7 @@ func (b *ResponseWriterContentBuffer) Write(res openai.ChatCompletionResponse) e
 	return nil
 }
 
-func (b *ResponseWriterContentBuffer) WriteRequest(req openai.ChatCompletionRequest) error {
+func (b *ResponseWriterContentBuffer) WriteRequest(req oai.ChatCompletionNewParams) error {
 	err := b.w.WriteRequest(req)
 	if err != nil {
 		return fmt.Errorf("pass-thru write request: %w", err)
@@ -166,8 +186,11 @@ func (b *ResponseWriterContentBuffer) WriteRequest(req openai.ChatCompletionRequ
 	return nil
 }
 
-func (b *ResponseWriterContentBuffer) WriteStream(res openai.ChatCompletionStreamResponse) error {
-	err := b.w.WriteStream(res)
+func (b *ResponseWriterContentBuffer) WriteStream(
+	res oai.ChatCompletionChunk,
+	phase WriteStreamPhase,
+) error {
+	err := b.w.WriteStream(res, phase)
 	if err != nil {
 		return fmt.Errorf("pass-thru write stream: %w", err)
 	}

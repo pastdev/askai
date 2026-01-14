@@ -65,7 +65,7 @@ func (c *Config) EndpointConfig(endpoint string) (*EndpointConfig, error) {
 	return &clientCfg, nil
 }
 
-func (c *EndpointConfig) NewClient() *openai.Client {
+func (c *EndpointConfig) NewClientLegacy() *openai.Client {
 	cfg := openai.DefaultConfig(c.AuthToken)
 
 	if c.BaseURL != "" {
@@ -127,7 +127,7 @@ func (c *EndpointConfig) NewHTTPClient() *http.Client {
 	return &http.Client{Transport: transport}
 }
 
-func (c *EndpointConfig) NewOaiClient() oai.Client {
+func (c *EndpointConfig) NewClient() oai.Client {
 	opts := []oaiopt.RequestOption{
 		oaiopt.WithHTTPClient(c.NewHTTPClient()),
 	}

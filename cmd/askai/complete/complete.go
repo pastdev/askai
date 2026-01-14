@@ -119,7 +119,7 @@ func New(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("new client: %w", err)
 			}
 
-			client := endpoint.NewOaiClient()
+			client := endpoint.NewClient()
 			ctx := context.Background()
 
 			defaults := oai.ChatCompletionNewParams{}
@@ -144,14 +144,14 @@ func New(cfg *config.Config) *cobra.Command {
 				output = "raw"
 			}
 
-			var writer chatcompletion.ResponseWriterOai
+			var writer chatcompletion.ResponseWriter
 			switch output {
 			case "content":
-				writer = &chatcompletion.ContentResponseWriterOai{W: os.Stdout}
+				writer = &chatcompletion.ContentResponseWriter{W: os.Stdout}
 			case "raw":
-				writer = &chatcompletion.RawResponseWriterOai{W: os.Stdout}
+				writer = &chatcompletion.RawResponseWriter{W: os.Stdout}
 			case "recap":
-				writer = &chatcompletion.RecapResponseWriterOai{W: os.Stdout}
+				writer = &chatcompletion.RecapResponseWriter{W: os.Stdout}
 			}
 
 			if len(attachments) > 0 {
@@ -181,17 +181,17 @@ func New(cfg *config.Config) *cobra.Command {
 				}
 				req.Messages = append(defaults.Messages, req.Messages...)
 
-				err = chatcompletion.SendOai(ctx, client, req, stream, writer)
+				err = chatcompletion.Send(ctx, client, req, stream, writer)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
 				}
 			} else {
-				conv, err := chatcompletion.LoadPersistentConversationOai(conversation, defaults)
+				conv, err := chatcompletion.LoadPersistentConversation(conversation, defaults)
 				if err != nil {
 					return fmt.Errorf("load %s: %w", conversation, err)
 				}
 
-				err = chatcompletion.SendReplyOai(
+				err = chatcompletion.SendReply(
 					ctx,
 					client,
 					&conv,
