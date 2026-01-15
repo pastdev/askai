@@ -131,16 +131,6 @@ func HandleStreamResponse(
 			println("Content stream finished:", content)
 		}
 
-		// CODE_REVIEW_CATCH_ME: what do i need to do for these?
-		// // if using tool calls
-		// if tool, ok := acc.JustFinishedToolCall(); ok {
-		// 	println("Tool call stream finished:", tool.Index, tool.Name, tool.Arguments)
-		// }
-
-		// if refusal, ok := acc.JustFinishedRefusal(); ok {
-		// 	println("Refusal stream finished:", refusal)
-		// }
-
 		if len(chunk.Choices) > 0 {
 			log.Trace().Interface("chunk", chunk).Msg("recieved stream chunk")
 			err = writer.WriteStream(chunk, phase)

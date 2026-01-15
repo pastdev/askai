@@ -17,7 +17,6 @@ import (
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/cmd/askai/flags/optional"
 	"github.com/pastdev/askai/pkg/chatcompletion"
-	"github.com/pastdev/askai/pkg/log"
 	"github.com/spf13/cobra"
 )
 
@@ -115,7 +114,6 @@ func New(cfg *config.Config) *cobra.Command {
 		//nolint: revive // required to match upstream signature
 		RunE: func(cmd *cobra.Command, args []string) error {
 			endpoint, err := cfg.EndpointConfig()
-			log.Trace().Interface("endpoint", endpoint).Msg("CODE_REVIEW_CATCH_ME")
 			if err != nil {
 				return fmt.Errorf("new client: %w", err)
 			}
