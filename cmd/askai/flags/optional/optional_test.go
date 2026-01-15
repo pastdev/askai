@@ -37,7 +37,7 @@ func OptionalVarPTester[T optionalTypes](
 	var optV param.Opt[T]
 
 	cmd := &cobra.Command{
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			if expectedValid {
 				require.True(t, optV.Valid())
 				require.Equal(t, expected, optV.Value)
@@ -47,7 +47,7 @@ func OptionalVarPTester[T optionalTypes](
 		},
 	}
 
-	OptionalVarP(cmd.Flags(), &optV, "optv", "", "testing")
+	VarP(cmd.Flags(), &optV, "optv", "", "testing")
 
 	cmd.SetArgs(args)
 

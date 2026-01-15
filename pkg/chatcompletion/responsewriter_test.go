@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/chatcompletion"
 	"github.com/pastdev/askai/pkg/log"
 	"github.com/stretchr/testify/require"
@@ -17,8 +17,8 @@ func TestResponseWriter(t *testing.T) {
 	tester := func(
 		t *testing.T,
 		wFac func(io.Writer) chatcompletion.ResponseWriter,
-		res *oai.ChatCompletion,
-		sres []oai.ChatCompletionChunk,
+		res *openai.ChatCompletion,
+		sres []openai.ChatCompletionChunk,
 		validator func(*testing.T, string),
 	) {
 		var buf strings.Builder
@@ -71,8 +71,8 @@ func TestResponseWriter(t *testing.T) {
 		}
 	}
 
-	resFac := func(t *testing.T, raw string) (*oai.ChatCompletion, string) {
-		var res oai.ChatCompletion
+	resFac := func(t *testing.T, raw string) (*openai.ChatCompletion, string) {
+		var res openai.ChatCompletion
 		err := json.Unmarshal([]byte(raw), &res)
 		require.NoError(t, err)
 		fullRaw, err := json.Marshal(res)
@@ -80,8 +80,8 @@ func TestResponseWriter(t *testing.T) {
 		return &res, string(fullRaw)
 	}
 
-	resStreamFac := func(t *testing.T, raw string) ([]oai.ChatCompletionChunk, string) {
-		var res []oai.ChatCompletionChunk
+	resStreamFac := func(t *testing.T, raw string) ([]openai.ChatCompletionChunk, string) {
+		var res []openai.ChatCompletionChunk
 		err := json.Unmarshal([]byte(raw), &res)
 		require.NoError(t, err)
 

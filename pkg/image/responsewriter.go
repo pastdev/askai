@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
 	"github.com/pastdev/open/pkg/open"
 )
@@ -18,7 +18,7 @@ var _ ResponseWriter = &RawResponseWriter{}
 var _ ResponseWriter = &FileResponseWriter{}
 
 type ResponseWriter interface {
-	Write(*oai.ImagesResponse) error
+	Write(*openai.ImagesResponse) error
 }
 
 type HTTPDoer interface {
@@ -36,7 +36,7 @@ type RawResponseWriter struct {
 	W    io.Writer
 }
 
-func (w *FileResponseWriter) Write(res *oai.ImagesResponse) error {
+func (w *FileResponseWriter) Write(res *openai.ImagesResponse) error {
 	for i, data := range res.Data {
 		switch {
 		case data.B64JSON != "":
@@ -116,7 +116,7 @@ func (w *FileResponseWriter) writeURL(index int, imageURL string) error {
 }
 
 // Writes the response as JSON.
-func (w *RawResponseWriter) Write(res *oai.ImagesResponse) error {
+func (w *RawResponseWriter) Write(res *openai.ImagesResponse) error {
 	err := json.NewEncoder(w.W).Encode(res)
 	if err != nil {
 		return fmt.Errorf("write encode: %w", err)

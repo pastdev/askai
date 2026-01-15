@@ -24,19 +24,19 @@ func valueOf[T optionalTypes](v string) (T, error) {
 	case bool:
 		val, err := strconv.ParseBool(v)
 		if err != nil {
-			return casted, err
+			return casted, fmt.Errorf("parse bool: %w", err)
 		}
 		return any(val).(T), nil
 	case float64:
 		val, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return casted, err
+			return casted, fmt.Errorf("parse float: %w", err)
 		}
 		return any(val).(T), nil
 	case int64:
 		val, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			return casted, err
+			return casted, fmt.Errorf("parse int: %w", err)
 		}
 		return any(val).(T), nil
 	default:
@@ -75,16 +75,16 @@ func (o *optional[T]) Type() string {
 	return fmt.Sprintf("%T", *new(T))
 }
 
-func OptionalVar[T optionalTypes](
+func Var[T optionalTypes](
 	f *pflag.FlagSet,
 	p *param.Opt[T],
 	name string,
 	usage string,
 ) {
-	OptionalVarP(f, p, name, "", usage)
+	VarP(f, p, name, "", usage)
 }
 
-func OptionalVarP[T optionalTypes](
+func VarP[T optionalTypes](
 	f *pflag.FlagSet,
 	p *param.Opt[T],
 	name string,

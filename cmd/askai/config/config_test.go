@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/packages/param"
 	pkgcfg "github.com/pastdev/askai/pkg/config"
 	cobracfg "github.com/pastdev/configloader/pkg/cobra"
@@ -17,7 +17,7 @@ func TestConfigLoader(t *testing.T) {
 			DefaultSources: cfgldr.Sources[pkgcfg.Config]{
 				cfgldr.RawSource[pkgcfg.Config]{
 					Data:      []byte(cfgYaml),
-					Unmarshal: YamlToJsonWithValueTemplateUnmarshal[pkgcfg.Config](),
+					Unmarshal: YamlToJSONWithValueTemplateUnmarshal[pkgcfg.Config](),
 				},
 			},
 		}
@@ -98,12 +98,12 @@ endpoints:
 				DefaultEndpoint: "grok",
 				Endpoints: map[string]pkgcfg.EndpointConfig{
 					"grok": {
-						ChatCompletionDefaults: &oai.ChatCompletionNewParams{
-							Messages: []oai.ChatCompletionMessageParamUnion{
+						ChatCompletionDefaults: &openai.ChatCompletionNewParams{
+							Messages: []openai.ChatCompletionMessageParamUnion{
 								{
-									OfSystem: &oai.ChatCompletionSystemMessageParam{
+									OfSystem: &openai.ChatCompletionSystemMessageParam{
 										Role: "system",
-										Content: oai.ChatCompletionSystemMessageParamContentUnion{
+										Content: openai.ChatCompletionSystemMessageParamContentUnion{
 											OfString: param.NewOpt("keep it simple"),
 										},
 									},

@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 )
 
 const (
@@ -26,9 +26,9 @@ type ContentResponseWriter struct {
 }
 
 type ResponseWriter interface {
-	Write(*oai.ChatCompletion) error
-	WriteRequest(oai.ChatCompletionNewParams) error
-	WriteStream(oai.ChatCompletionChunk, WriteStreamPhase) error
+	Write(*openai.ChatCompletion) error
+	WriteRequest(openai.ChatCompletionNewParams) error
+	WriteStream(openai.ChatCompletionChunk, WriteStreamPhase) error
 }
 
 type RawResponseWriter struct {
@@ -36,13 +36,12 @@ type RawResponseWriter struct {
 }
 
 type RecapResponseWriter struct {
-	streamWriteCount int
-	W                io.Writer
+	W io.Writer
 }
 
 type WriteStreamPhase int
 
-func (b *ContentResponseWriter) Write(res *oai.ChatCompletion) error {
+func (b *ContentResponseWriter) Write(res *openai.ChatCompletion) error {
 	if len(res.Choices) < 1 {
 		return nil
 	}
@@ -54,12 +53,12 @@ func (b *ContentResponseWriter) Write(res *oai.ChatCompletion) error {
 	return nil
 }
 
-func (b *ContentResponseWriter) WriteRequest(_ oai.ChatCompletionNewParams) error {
+func (b *ContentResponseWriter) WriteRequest(_ openai.ChatCompletionNewParams) error {
 	return nil
 }
 
 func (b *ContentResponseWriter) WriteStream(
-	res oai.ChatCompletionChunk,
+	res openai.ChatCompletionChunk,
 	_ WriteStreamPhase,
 ) error {
 	if len(res.Choices) < 1 {
@@ -73,7 +72,7 @@ func (b *ContentResponseWriter) WriteStream(
 	return nil
 }
 
-func (b *RawResponseWriter) Write(res *oai.ChatCompletion) error {
+func (b *RawResponseWriter) Write(res *openai.ChatCompletion) error {
 	err := json.NewEncoder(b.W).Encode(res)
 	if err != nil {
 		return fmt.Errorf("rawresponsewriter write: %w", err)
@@ -81,12 +80,12 @@ func (b *RawResponseWriter) Write(res *oai.ChatCompletion) error {
 	return nil
 }
 
-func (b *RawResponseWriter) WriteRequest(_ oai.ChatCompletionNewParams) error {
+func (b *RawResponseWriter) WriteRequest(_ openai.ChatCompletionNewParams) error {
 	return nil
 }
 
 func (b *RawResponseWriter) WriteStream(
-	res oai.ChatCompletionChunk,
+	res openai.ChatCompletionChunk,
 	_ WriteStreamPhase,
 ) error {
 	err := json.NewEncoder(b.W).Encode(res)
@@ -96,7 +95,7 @@ func (b *RawResponseWriter) WriteStream(
 	return nil
 }
 
-func (b *RecapResponseWriter) Write(res *oai.ChatCompletion) error {
+func (b *RecapResponseWriter) Write(res *openai.ChatCompletion) error {
 	if len(res.Choices) < 1 {
 		return nil
 	}
@@ -112,7 +111,7 @@ func (b *RecapResponseWriter) Write(res *oai.ChatCompletion) error {
 	return nil
 }
 
-func (b *RecapResponseWriter) WriteRequest(req oai.ChatCompletionNewParams) error {
+func (b *RecapResponseWriter) WriteRequest(req openai.ChatCompletionNewParams) error {
 	var err error
 	for _, message := range req.Messages {
 		switch {
@@ -130,7 +129,7 @@ func (b *RecapResponseWriter) WriteRequest(req oai.ChatCompletionNewParams) erro
 }
 
 func (b *RecapResponseWriter) WriteStream(
-	res oai.ChatCompletionChunk,
+	res openai.ChatCompletionChunk,
 	phase WriteStreamPhase,
 ) error {
 	if len(res.Choices) < 1 {
@@ -168,7 +167,7 @@ func (b *ResponseWriterContentBuffer) String() string {
 	return b.buf.String()
 }
 
-func (b *ResponseWriterContentBuffer) Write(res *oai.ChatCompletion) error {
+func (b *ResponseWriterContentBuffer) Write(res *openai.ChatCompletion) error {
 	err := b.w.Write(res)
 	if err != nil {
 		return fmt.Errorf("pass-thru write: %w", err)
@@ -178,7 +177,7 @@ func (b *ResponseWriterContentBuffer) Write(res *oai.ChatCompletion) error {
 	return nil
 }
 
-func (b *ResponseWriterContentBuffer) WriteRequest(req oai.ChatCompletionNewParams) error {
+func (b *ResponseWriterContentBuffer) WriteRequest(req openai.ChatCompletionNewParams) error {
 	err := b.w.WriteRequest(req)
 	if err != nil {
 		return fmt.Errorf("pass-thru write request: %w", err)
@@ -187,7 +186,7 @@ func (b *ResponseWriterContentBuffer) WriteRequest(req oai.ChatCompletionNewPara
 }
 
 func (b *ResponseWriterContentBuffer) WriteStream(
-	res oai.ChatCompletionChunk,
+	res openai.ChatCompletionChunk,
 	phase WriteStreamPhase,
 ) error {
 	err := b.w.WriteStream(res, phase)

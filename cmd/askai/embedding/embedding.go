@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/pkg/embedding"
@@ -30,19 +30,19 @@ func New(cfg *config.Config) *cobra.Command {
 			client := endpoint.NewClient()
 			ctx := context.Background()
 
-			req := oai.EmbeddingNewParams{
-				Model: oai.EmbeddingModel(model),
+			req := openai.EmbeddingNewParams{
+				Model: openai.EmbeddingModel(model),
 			}
 
 			switch {
 			case len(inputStrings) == 0:
 				return errors.New("at least one input is required")
 			case len(inputStrings) == 1:
-				req.Input = oai.EmbeddingNewParamsInputUnion{
+				req.Input = openai.EmbeddingNewParamsInputUnion{
 					OfString: param.NewOpt(inputStrings[0]),
 				}
 			case len(inputStrings) > 1:
-				req.Input = oai.EmbeddingNewParamsInputUnion{
+				req.Input = openai.EmbeddingNewParamsInputUnion{
 					OfArrayOfStrings: inputStrings,
 				}
 			}

@@ -6,17 +6,17 @@ import (
 	"fmt"
 	"io"
 
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
 )
 
 func HandleBufferResponse(
 	ctx context.Context,
-	client oai.Client,
-	req oai.EmbeddingNewParams,
+	client openai.Client,
+	req openai.EmbeddingNewParams,
 	writer io.Writer,
 ) error {
-	var resp *oai.CreateEmbeddingResponse
+	var resp *openai.CreateEmbeddingResponse
 	resp, err := client.Embeddings.New(ctx, req)
 	if err != nil {
 		return fmt.Errorf("embeddings: %w", err)
@@ -39,8 +39,8 @@ func HandleBufferResponse(
 
 func Send(
 	ctx context.Context,
-	client oai.Client,
-	req oai.EmbeddingNewParams,
+	client openai.Client,
+	req openai.EmbeddingNewParams,
 	writer io.Writer,
 ) error {
 	log.Debug().Interface("input", req.Input).Msg("the input")

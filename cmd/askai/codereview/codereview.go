@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"dario.cat/mergo"
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/pkg/chatcompletion"
 	"github.com/pastdev/askai/pkg/git"
@@ -119,7 +119,7 @@ func (s SchemaJSON) MarshalJSON() ([]byte, error) {
 }
 
 func New(cfg *config.Config) *cobra.Command {
-	var req oai.ChatCompletionNewParams
+	var req openai.ChatCompletionNewParams
 
 	cmd := cobra.Command{
 		Use:     "codereview",
@@ -145,12 +145,12 @@ func New(cfg *config.Config) *cobra.Command {
 			client := endpoint.NewClient()
 			ctx := context.Background()
 
-			defaults := oai.ChatCompletionNewParams{}
+			defaults := openai.ChatCompletionNewParams{}
 			if endpoint.ChatCompletionDefaults != nil {
 				defaults = *endpoint.ChatCompletionDefaults
 			}
 
-			req.Tools = []oai.ChatCompletionToolUnionParam{}
+			req.Tools = []openai.ChatCompletionToolUnionParam{}
 
 			err = mergo.Merge(&req, defaults)
 			if err != nil {
@@ -161,17 +161,17 @@ func New(cfg *config.Config) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("diff: %w", err)
 			}
-			req.Messages = []oai.ChatCompletionMessageParamUnion{
-				oai.SystemMessage(SystemPrompt),
-				oai.UserMessage(codeDiff),
+			req.Messages = []openai.ChatCompletionMessageParamUnion{
+				openai.SystemMessage(SystemPrompt),
+				openai.UserMessage(codeDiff),
 			}
 
-			req.ResponseFormat = oai.ChatCompletionNewParamsResponseFormatUnion{
-				OfJSONSchema: &oai.ResponseFormatJSONSchemaParam{
-					JSONSchema: oai.ResponseFormatJSONSchemaJSONSchemaParam{
+			req.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
+					JSONSchema: openai.ResponseFormatJSONSchemaJSONSchemaParam{
 						Name:   "code_review",
 						Schema: OutputSchema,
-						Strict: oai.Bool(true),
+						Strict: openai.Bool(true),
 					},
 				},
 			}

@@ -5,20 +5,19 @@ import (
 	"fmt"
 
 	"github.com/openai/openai-go/v3"
-	oai "github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
 	"github.com/spf13/pflag"
 )
 
 type messageArrayValue struct {
 	msgs    *[]openai.ChatCompletionMessageParamUnion
-	factory func(string) oai.ChatCompletionMessageParamUnion
+	factory func(string) openai.ChatCompletionMessageParamUnion
 }
 
 func newMessageArrayValue(
 	val []openai.ChatCompletionMessageParamUnion,
 	p *[]openai.ChatCompletionMessageParamUnion,
-	factory func(string) oai.ChatCompletionMessageParamUnion,
+	factory func(string) openai.ChatCompletionMessageParamUnion,
 ) *messageArrayValue {
 	mav := new(messageArrayValue)
 	mav.msgs = p
@@ -61,7 +60,7 @@ func (*messageArrayValue) Type() string {
 
 func MessageArrayVar(
 	f *pflag.FlagSet,
-	factory func(string) oai.ChatCompletionMessageParamUnion,
+	factory func(string) openai.ChatCompletionMessageParamUnion,
 	p *[]openai.ChatCompletionMessageParamUnion,
 	name string,
 	value []openai.ChatCompletionMessageParamUnion,
@@ -72,11 +71,11 @@ func MessageArrayVar(
 
 func MessageArrayVarP(
 	f *pflag.FlagSet,
-	factory func(string) oai.ChatCompletionMessageParamUnion,
-	p *[]oai.ChatCompletionMessageParamUnion,
+	factory func(string) openai.ChatCompletionMessageParamUnion,
+	p *[]openai.ChatCompletionMessageParamUnion,
 	name string,
 	shorthand string,
-	value []oai.ChatCompletionMessageParamUnion,
+	value []openai.ChatCompletionMessageParamUnion,
 	usage string,
 ) {
 	f.VarP(newMessageArrayValue(value, p, factory), name, shorthand, usage)

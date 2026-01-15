@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"dario.cat/mergo"
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/cmd/askai/flags/optional"
@@ -78,7 +78,7 @@ func encodeAttachments(attachements []string) (string, error) {
 }
 
 func New(cfg *config.Config) *cobra.Command {
-	var req oai.ChatCompletionNewParams
+	var req openai.ChatCompletionNewParams
 	var conversation string
 	var logItBias string
 	var output string
@@ -123,7 +123,7 @@ func New(cfg *config.Config) *cobra.Command {
 			client := endpoint.NewClient()
 			ctx := context.Background()
 
-			defaults := oai.ChatCompletionNewParams{}
+			defaults := openai.ChatCompletionNewParams{}
 			if endpoint.ChatCompletionDefaults != nil {
 				defaults = *endpoint.ChatCompletionDefaults
 			}
@@ -165,7 +165,7 @@ func New(cfg *config.Config) *cobra.Command {
 						if err != nil {
 							return err
 						}
-						req.Messages[i] = oai.UserMessage(
+						req.Messages[i] = openai.UserMessage(
 							fmt.Sprintf(
 								"%s\n\n########## base64 encoded attachments ##########\n%s",
 								req.Messages[i].OfUser.Content.OfString.Value,
@@ -226,17 +226,17 @@ func New(cfg *config.Config) *cobra.Command {
 		"logit-bias",
 		"",
 		"A json map of string to int where they key is the token (can be obtained using: 'askai tokens encode') and the value is a bias between -100 (prohibit) and 100 (encourage)")
-	optional.OptionalVar(
+	optional.Var(
 		cmd.Flags(),
 		&req.Logprobs,
 		"logprobs",
 		"Returns the log probabilities of each output token returned in the content of message")
-	optional.OptionalVar(
+	optional.Var(
 		cmd.Flags(),
 		&req.MaxTokens,
 		"max-tokens",
 		"The maximum number of tokens that can be generated in the chat completion (deprecated in favor of max-completion-tokens, but older servers may still only support this)")
-	optional.OptionalVar(
+	optional.Var(
 		cmd.Flags(),
 		&req.MaxCompletionTokens,
 		"max-completion-tokens",
@@ -256,7 +256,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"One or more complete json messages")
 	MessageArrayVarP(
 		cmd.Flags(),
-		oai.UserMessage,
+		openai.UserMessage,
 		&req.Messages,
 		"user",
 		"u",
@@ -264,7 +264,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"One or more user content messages")
 	MessageArrayVarP(
 		cmd.Flags(),
-		oai.SystemMessage,
+		openai.SystemMessage,
 		&req.Messages,
 		"system",
 		"s",
@@ -272,7 +272,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"One or more system content messages")
 	MessageArrayVarP(
 		cmd.Flags(),
-		oai.AssistantMessage,
+		openai.AssistantMessage,
 		&req.Messages,
 		"assistant",
 		"a",
@@ -288,12 +288,12 @@ func New(cfg *config.Config) *cobra.Command {
 		"stream",
 		false,
 		"Stream the response")
-	optional.OptionalVar(
+	optional.Var(
 		cmd.Flags(),
 		&req.Temperature,
 		"temperature",
 		"Temperature, zero is not set, so if you want zero, use 0.0000001 or similar")
-	optional.OptionalVar(
+	optional.Var(
 		cmd.Flags(),
 		&req.TopLogprobs,
 		"top-logprobs",

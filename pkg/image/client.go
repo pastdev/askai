@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
 )
 
 func Send(
 	ctx context.Context,
-	client oai.Client,
-	req oai.ImageGenerateParams,
+	client openai.Client,
+	req openai.ImageGenerateParams,
 	writer ResponseWriter,
 ) error {
 	log.Debug().Interface("req", req).Msg("the request")

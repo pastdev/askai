@@ -67,15 +67,15 @@ func AddConfig(root *cobra.Command) *Config {
 			DefaultSources: cfgldr.Sources[pkgcfg.Config]{
 				cfgldr.DirSource[pkgcfg.Config]{
 					Path:      SystemConfigDir,
-					Unmarshal: YamlToJsonWithValueTemplateUnmarshal[pkgcfg.Config](),
+					Unmarshal: YamlToJSONWithValueTemplateUnmarshal[pkgcfg.Config](),
 				},
 				cfgldr.DirSource[pkgcfg.Config]{
 					Path:      UserConfigDir,
-					Unmarshal: YamlToJsonWithValueTemplateUnmarshal[pkgcfg.Config](),
+					Unmarshal: YamlToJSONWithValueTemplateUnmarshal[pkgcfg.Config](),
 				},
 				cfgldr.DirSource[pkgcfg.Config]{
 					Path:      DirectoryConfigDir,
-					Unmarshal: YamlToJsonWithValueTemplateUnmarshal[pkgcfg.Config](),
+					Unmarshal: YamlToJSONWithValueTemplateUnmarshal[pkgcfg.Config](),
 				},
 			},
 		},
@@ -110,11 +110,11 @@ func AddConfig(root *cobra.Command) *Config {
 	return &cfg
 }
 
-// YamlToJsonWithValueTemplateUnmarshal is an Unmarshal function that converts
+// YamlToJSONWithValueTemplateUnmarshal is an Unmarshal function that converts
 // yaml to json, then unmarshals using the json unmarshal so that json tags are
 // respected, then processes each _value_ individually through the go template
 // engine then reserializes the result to json before unmarshaling into T.
-func YamlToJsonWithValueTemplateUnmarshal[T any]() func(b []byte, cfg *T) error {
+func YamlToJSONWithValueTemplateUnmarshal[T any]() func(b []byte, cfg *T) error {
 	return func(b []byte, cfg *T) error {
 		var valueMap any
 		err := yaml2json.Unmarshal(b, &valueMap)

@@ -6,19 +6,19 @@ import (
 	"fmt"
 	"os/exec"
 
-	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
 )
 
 type Conversation interface {
-	Continue(oai.ChatCompletionNewParams) (oai.ChatCompletionNewParams, error)
+	Continue(openai.ChatCompletionNewParams) (openai.ChatCompletionNewParams, error)
 	UpdateResponse(string) error
 }
 
 func HandleBufferResponse(
 	ctx context.Context,
-	client oai.Client,
-	req oai.ChatCompletionNewParams,
+	client openai.Client,
+	req openai.ChatCompletionNewParams,
 	writer ResponseWriter,
 ) error {
 	err := writer.WriteRequest(req)
@@ -49,14 +49,14 @@ func HandleBufferResponse(
 
 func handleToolCalls(
 	ctx context.Context,
-	client oai.Client,
-	req oai.ChatCompletionNewParams,
-	resp *oai.ChatCompletion,
+	client openai.Client,
+	req openai.ChatCompletionNewParams,
+	resp *openai.ChatCompletion,
 	stream bool,
 	writer ResponseWriter,
 ) error {
 	toolCalls := resp.Choices[0].Message.ToolCalls
-	toolCallCompletionMessages := make([]oai.ChatCompletionMessageParamUnion, 0, len(toolCalls))
+	toolCallCompletionMessages := make([]openai.ChatCompletionMessageParamUnion, 0, len(toolCalls))
 
 	for _, toolCall := range toolCalls {
 		log.Debug().Interface("toolCall", toolCall).Msg("invoking tool")
@@ -92,7 +92,7 @@ func handleToolCalls(
 
 		toolCallCompletionMessages = append(
 			toolCallCompletionMessages,
-			oai.ToolMessage(outBuf.String(), toolCall.ID))
+			openai.ToolMessage(outBuf.String(), toolCall.ID))
 	}
 
 	req.Messages = append(req.Messages, resp.Choices[0].Message.ToParam())
@@ -107,8 +107,8 @@ func handleToolCalls(
 
 func HandleStreamResponse(
 	ctx context.Context,
-	client oai.Client,
-	req oai.ChatCompletionNewParams,
+	client openai.Client,
+	req openai.ChatCompletionNewParams,
 	writer ResponseWriter,
 ) error {
 	err := writer.WriteRequest(req)
@@ -119,7 +119,7 @@ func HandleStreamResponse(
 	strm := client.Chat.Completions.NewStreaming(ctx, req)
 	defer func() { _ = strm.Close() }()
 
-	acc := oai.ChatCompletionAccumulator{}
+	acc := openai.ChatCompletionAccumulator{}
 
 	phase := WriteStreamStart
 	for strm.Next() {
@@ -161,8 +161,8 @@ func HandleStreamResponse(
 
 func Send(
 	ctx context.Context,
-	client oai.Client,
-	req oai.ChatCompletionNewParams,
+	client openai.Client,
+	req openai.ChatCompletionNewParams,
 	stream bool,
 	writer ResponseWriter,
 ) error {
@@ -181,9 +181,9 @@ func Send(
 
 func SendReply(
 	ctx context.Context,
-	client oai.Client,
+	client openai.Client,
 	conversation Conversation,
-	reply oai.ChatCompletionNewParams,
+	reply openai.ChatCompletionNewParams,
 	stream bool,
 	writer ResponseWriter,
 ) error {
