@@ -4,25 +4,25 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/pflag"
 )
 
 type messageArrayValue struct {
-	msgs *[]openai.ChatCompletionMessage
-	role string
+	msgs    *[]openai.ChatCompletionMessageParamUnion
+	factory func(string) openai.ChatCompletionMessageParamUnion
 }
 
 func newMessageArrayValue(
-	val []openai.ChatCompletionMessage,
-	p *[]openai.ChatCompletionMessage,
-	role string,
+	val []openai.ChatCompletionMessageParamUnion,
+	p *[]openai.ChatCompletionMessageParamUnion,
+	factory func(string) openai.ChatCompletionMessageParamUnion,
 ) *messageArrayValue {
 	mav := new(messageArrayValue)
 	mav.msgs = p
 	*mav.msgs = val
-	mav.role = role
+	mav.factory = factory
 	return mav
 }
 
@@ -33,17 +33,14 @@ func (m *messageArrayValue) String() string {
 }
 
 func (m *messageArrayValue) Set(v string) error {
-	var msg openai.ChatCompletionMessage
-	if m.role == "" {
+	var msg openai.ChatCompletionMessageParamUnion
+	if m.factory == nil {
 		err := json.Unmarshal([]byte(v), &msg)
 		if err != nil {
 			return fmt.Errorf("unmarshal message: %w", err)
 		}
 	} else {
-		msg = openai.ChatCompletionMessage{
-			Role:    m.role,
-			Content: v,
-		}
+		msg = m.factory(v)
 	}
 
 	if len(*m.msgs) > 0 {
@@ -51,7 +48,7 @@ func (m *messageArrayValue) Set(v string) error {
 		*m.msgs = append(*m.msgs, msg)
 	} else {
 		log.Trace().Interface("message", msg).Msg("initial message")
-		*m.msgs = []openai.ChatCompletionMessage{msg}
+		*m.msgs = []openai.ChatCompletionMessageParamUnion{msg}
 	}
 
 	return nil
@@ -63,23 +60,23 @@ func (*messageArrayValue) Type() string {
 
 func MessageArrayVar(
 	f *pflag.FlagSet,
-	role string,
-	p *[]openai.ChatCompletionMessage,
+	factory func(string) openai.ChatCompletionMessageParamUnion,
+	p *[]openai.ChatCompletionMessageParamUnion,
 	name string,
-	value []openai.ChatCompletionMessage,
+	value []openai.ChatCompletionMessageParamUnion,
 	usage string,
 ) {
-	MessageArrayVarP(f, role, p, name, "", value, usage)
+	MessageArrayVarP(f, factory, p, name, "", value, usage)
 }
 
 func MessageArrayVarP(
 	f *pflag.FlagSet,
-	role string,
-	p *[]openai.ChatCompletionMessage,
+	factory func(string) openai.ChatCompletionMessageParamUnion,
+	p *[]openai.ChatCompletionMessageParamUnion,
 	name string,
 	shorthand string,
-	value []openai.ChatCompletionMessage,
+	value []openai.ChatCompletionMessageParamUnion,
 	usage string,
 ) {
-	f.VarP(newMessageArrayValue(value, p, role), name, shorthand, usage)
+	f.VarP(newMessageArrayValue(value, p, factory), name, shorthand, usage)
 }

@@ -4,18 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
-	"github.com/sashabaranov/go-openai"
 )
 
 func Send(
 	ctx context.Context,
-	client *openai.Client,
-	req openai.ImageRequest,
+	client openai.Client,
+	req openai.ImageGenerateParams,
 	writer ResponseWriter,
 ) error {
 	log.Debug().Interface("req", req).Msg("the request")
-	resp, err := client.CreateImage(ctx, req)
+	resp, err := client.Images.Generate(ctx, req)
 	if err != nil {
 		return fmt.Errorf("send create image: %w", err)
 	}
