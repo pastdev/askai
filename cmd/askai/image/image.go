@@ -6,17 +6,19 @@ import (
 	"os"
 
 	"dario.cat/mergo"
+	oai "github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/cmd/askai/config"
+	"github.com/pastdev/askai/cmd/askai/flags/optional"
 	"github.com/pastdev/askai/pkg/image"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 )
 
 func New(cfg *config.Config) *cobra.Command {
-	var req openai.ImageRequest
 	var open bool
 	var output string
 	var outputFileDir string
+	var req oai.ImageGenerateParams
+	var responseFormat string
 
 	cmd := cobra.Command{
 		Use:   "image",
@@ -28,15 +30,24 @@ func New(cfg *config.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prompt := args[0]
 
+			switch responseFormat {
+			case string(oai.ImageGenerateParamsResponseFormatB64JSON):
+				req.ResponseFormat = oai.ImageGenerateParamsResponseFormatB64JSON
+			case string(oai.ImageGenerateParamsResponseFormatURL):
+				req.ResponseFormat = oai.ImageGenerateParamsResponseFormatURL
+			default:
+				return fmt.Errorf("unsupported response format: %s", responseFormat)
+			}
+
 			endpoint, err := cfg.EndpointConfig()
 			if err != nil {
 				return fmt.Errorf("new client: %w", err)
 			}
 
-			client := endpoint.NewClientLegacy()
+			client := endpoint.NewClient()
 			ctx := context.Background()
 
-			defaults := openai.ImageRequest{}
+			defaults := oai.ImageGenerateParams{}
 			if endpoint.ImageDefaults != nil {
 				defaults = *endpoint.ImageDefaults
 			}
@@ -77,10 +88,10 @@ func New(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().IntVar(
+	optional.OptionalVar(
+		cmd.Flags(),
 		&req.N,
 		"count",
-		1,
 		"Number of images to generate")
 	cmd.Flags().StringVar(
 		&req.Model,
@@ -103,7 +114,7 @@ func New(cfg *config.Config) *cobra.Command {
 		"",
 		"The directory to write files to when using --output file (defaults to a temp dir)")
 	cmd.Flags().StringVar(
-		&req.ResponseFormat,
+		&responseFormat,
 		"response-format",
 		"url",
 		"The response format, one of: url b64_json")

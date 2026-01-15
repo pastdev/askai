@@ -23,14 +23,14 @@ func New(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("new client: %w", err)
 			}
 
-			client := endpoint.NewClientLegacy()
+			client := endpoint.NewClient()
 			ctx := context.Background()
 
 			var res any
 			if modelID == "" {
-				res, err = client.ListModels(ctx)
+				res, err = client.Models.List(ctx)
 			} else {
-				res, err = client.GetModel(ctx, url.QueryEscape(modelID))
+				res, err = client.Models.Get(ctx, url.QueryEscape(modelID))
 			}
 			if err != nil {
 				return fmt.Errorf("obtain model info: %w", err)

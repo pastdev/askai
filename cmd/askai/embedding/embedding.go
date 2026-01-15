@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"os"
 
+	oai "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/pkg/embedding"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 )
 
@@ -26,20 +27,24 @@ func New(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("new client: %w", err)
 			}
 
-			client := endpoint.NewClientLegacy()
+			client := endpoint.NewClient()
 			ctx := context.Background()
 
-			req := openai.EmbeddingRequest{
-				Model: openai.EmbeddingModel(model),
+			req := oai.EmbeddingNewParams{
+				Model: oai.EmbeddingModel(model),
 			}
 
 			switch {
 			case len(inputStrings) == 0:
 				return errors.New("at least one input is required")
 			case len(inputStrings) == 1:
-				req.Input = inputStrings[0]
+				req.Input = oai.EmbeddingNewParamsInputUnion{
+					OfString: param.NewOpt(inputStrings[0]),
+				}
 			case len(inputStrings) > 1:
-				req.Input = inputStrings
+				req.Input = oai.EmbeddingNewParamsInputUnion{
+					OfArrayOfStrings: inputStrings,
+				}
 			}
 
 			err = embedding.Send(

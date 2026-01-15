@@ -15,6 +15,7 @@ import (
 	oai "github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/pastdev/askai/cmd/askai/config"
+	"github.com/pastdev/askai/cmd/askai/flags/optional"
 	"github.com/pastdev/askai/pkg/chatcompletion"
 	"github.com/pastdev/askai/pkg/log"
 	"github.com/spf13/cobra"
@@ -225,17 +226,17 @@ func New(cfg *config.Config) *cobra.Command {
 		"logit-bias",
 		"",
 		"A json map of string to int where they key is the token (can be obtained using: 'askai tokens encode') and the value is a bias between -100 (prohibit) and 100 (encourage)")
-	OptionalVar(
+	optional.OptionalVar(
 		cmd.Flags(),
 		&req.Logprobs,
 		"logprobs",
 		"Returns the log probabilities of each output token returned in the content of message")
-	OptionalVar(
+	optional.OptionalVar(
 		cmd.Flags(),
 		&req.MaxTokens,
 		"max-tokens",
 		"The maximum number of tokens that can be generated in the chat completion (deprecated in favor of max-completion-tokens, but older servers may still only support this)")
-	OptionalVar(
+	optional.OptionalVar(
 		cmd.Flags(),
 		&req.MaxCompletionTokens,
 		"max-completion-tokens",
@@ -287,12 +288,12 @@ func New(cfg *config.Config) *cobra.Command {
 		"stream",
 		false,
 		"Stream the response")
-	OptionalVar(
+	optional.OptionalVar(
 		cmd.Flags(),
 		&req.Temperature,
 		"temperature",
 		"Temperature, zero is not set, so if you want zero, use 0.0000001 or similar")
-	OptionalVar(
+	optional.OptionalVar(
 		cmd.Flags(),
 		&req.TopLogprobs,
 		"top-logprobs",

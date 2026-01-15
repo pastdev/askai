@@ -10,10 +10,8 @@ require (
 	github.com/pastdev/configloader v1.0.5
 	github.com/pastdev/open v1.0.1
 	github.com/pkoukk/tiktoken-go v0.1.7
-	github.com/sashabaranov/go-openai v1.41.2
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -45,6 +43,7 @@ require (
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (

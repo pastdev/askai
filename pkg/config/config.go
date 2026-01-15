@@ -12,7 +12,6 @@ import (
 	oai "github.com/openai/openai-go/v3"
 	oaiopt "github.com/openai/openai-go/v3/option"
 	"github.com/pastdev/askai/pkg/log"
-	"github.com/sashabaranov/go-openai"
 )
 
 var ExampleConfig = `---
@@ -33,14 +32,13 @@ type Config struct {
 
 // EndpointConfig is a configuration of a client.
 type EndpointConfig struct {
-	APIType                openai.APIType               `json:"api_type" yaml:"api_type"`
 	APIVersion             string                       `json:"api_version" yaml:"api_version"`
 	AuthToken              string                       `json:"auth_token" yaml:"auth_token"`
 	BaseURL                string                       `json:"base_url" yaml:"base_url"`
 	ChatCompletionDefaults *oai.ChatCompletionNewParams `json:"chat_completion_defaults" yaml:"chat_completion_defaults"`
 	CACerts                string                       `json:"cacerts" yaml:"cacerts"`
 	EmptyMessagesLimit     uint                         `json:"empty_messages_limit" yaml:"empty_messages_limit"`
-	ImageDefaults          *openai.ImageRequest         `json:"image_defaults" yaml:"image_defaults"`
+	ImageDefaults          *oai.ImageGenerateParams     `json:"image_defaults" yaml:"image_defaults"`
 	InsecureSkipTLS        bool                         `json:"insecure_skip_tls" yaml:"insecure_skip_tls"`
 	OrgID                  string                       `json:"org_id" yaml:"org_id"`
 }
@@ -63,33 +61,6 @@ func (c *Config) EndpointConfig(endpoint string) (*EndpointConfig, error) {
 	}
 
 	return &clientCfg, nil
-}
-
-func (c *EndpointConfig) NewClientLegacy() *openai.Client {
-	cfg := openai.DefaultConfig(c.AuthToken)
-
-	if c.BaseURL != "" {
-		cfg.BaseURL = c.BaseURL
-	}
-
-	if c.OrgID != "" {
-		cfg.OrgID = c.OrgID
-	}
-
-	if c.APIType != "" {
-		cfg.APIType = c.APIType
-	}
-	if c.APIVersion != "" {
-		cfg.APIVersion = c.APIVersion
-	}
-
-	if c.EmptyMessagesLimit > 0 {
-		cfg.EmptyMessagesLimit = c.EmptyMessagesLimit
-	}
-
-	cfg.HTTPClient = c.NewHTTPClient()
-
-	return openai.NewClientWithConfig(cfg)
 }
 
 func (c *EndpointConfig) NewHTTPClient() *http.Client {
