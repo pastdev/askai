@@ -17,6 +17,8 @@ import (
 	"github.com/pastdev/askai/cmd/askai/config"
 	"github.com/pastdev/askai/cmd/askai/flags/optional"
 	"github.com/pastdev/askai/pkg/chatcompletion"
+	"github.com/pastdev/askai/pkg/log"
+	"github.com/pastdev/askai/pkg/mcp"
 	"github.com/spf13/cobra"
 )
 
@@ -83,6 +85,7 @@ func New(cfg *config.Config) *cobra.Command {
 	var output string
 	var stream bool
 	var attachments []string
+	var mcpServers []string
 
 	cmd := cobra.Command{
 		Use:   "complete",
@@ -112,6 +115,7 @@ func New(cfg *config.Config) *cobra.Command {
         | sed 's/,$//')")" \
     --user "tell me a short story about foo"`,
 		//nolint: revive // required to match upstream signature
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			endpoint, err := cfg.EndpointConfig()
 			if err != nil {
@@ -141,6 +145,22 @@ func New(cfg *config.Config) *cobra.Command {
 				// obviously cant use "content" for output or you wouldn't see
 				// the log probs you explicitly asked for
 				output = "raw"
+			}
+
+			mcpClients := []*mcp.Client{}
+			for _, name := range mcpServers {
+				log.Debug().Str("mcpServer", name).Msg("adding mcp server")
+				mcpCfg, err := cfg.McpConfig(name)
+				if err != nil {
+					return fmt.Errorf("mcp config: %w", err)
+				}
+
+				mcpClient, err := mcpCfg.NewMcpClient(ctx)
+				if err != nil {
+					return fmt.Errorf("mcp new client: %w", err)
+				}
+
+				mcpClients = append(mcpClients, mcpClient)
 			}
 
 			var writer chatcompletion.ResponseWriter
@@ -180,7 +200,7 @@ func New(cfg *config.Config) *cobra.Command {
 				}
 				req.Messages = append(defaults.Messages, req.Messages...)
 
-				err = chatcompletion.Send(ctx, client, req, stream, writer)
+				err = chatcompletion.Send(ctx, client, req, stream, writer, mcpClients...)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
 				}
@@ -196,7 +216,8 @@ func New(cfg *config.Config) *cobra.Command {
 					&conv,
 					req,
 					stream,
-					writer)
+					writer,
+					mcpClients...)
 				if err != nil {
 					return fmt.Errorf("complete chat: %w", err)
 				}
@@ -239,6 +260,11 @@ func New(cfg *config.Config) *cobra.Command {
 		&req.MaxCompletionTokens,
 		"max-completion-tokens",
 		"The maximum number of tokens that can be generated in the chat completion")
+	cmd.Flags().StringArrayVar(
+		&mcpServers,
+		"mcp-server",
+		[]string{},
+		"The name of an mcp server configuration")
 	cmd.Flags().StringVar(
 		&req.Model,
 		"model",
