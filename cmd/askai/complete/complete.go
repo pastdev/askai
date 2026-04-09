@@ -53,11 +53,11 @@ func encodeAttachments(attachements []string) (string, error) {
 						return fmt.Errorf("read attachment: %w", err)
 					}
 
-					data.WriteString(
-						fmt.Sprintf(
-							"%s: %s\n",
-							path,
-							base64.StdEncoding.EncodeToString(content)))
+					fmt.Fprintf(
+						&data,
+						"%s: %s\n",
+						path,
+						base64.StdEncoding.EncodeToString(content))
 				}
 				return nil
 			})
@@ -71,8 +71,11 @@ func encodeAttachments(attachements []string) (string, error) {
 				return "", fmt.Errorf("read attachment: %w", err)
 			}
 
-			data.WriteString(
-				fmt.Sprintf("%s: %s\n", filename, base64.StdEncoding.EncodeToString(content)))
+			fmt.Fprintf(
+				&data,
+				"%s: %s\n",
+				filename,
+				base64.StdEncoding.EncodeToString(content))
 		}
 	}
 	return data.String(), nil
@@ -114,8 +117,8 @@ func New(cfg *config.Config) *cobra.Command {
       done \
         | sed 's/,$//')")" \
     --user "tell me a short story about foo"`,
-		//nolint: revive // required to match upstream signature
 		SilenceUsage: true,
+		//nolint: revive // required to match upstream signature
 		RunE: func(cmd *cobra.Command, args []string) error {
 			endpoint, err := cfg.EndpointConfig()
 			if err != nil {
