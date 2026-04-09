@@ -100,7 +100,7 @@ func TestResponseWriter(t *testing.T) {
 			`{
   "choices": []
 }`)
-		log.Trace().Interface("res", res).Str("raw", raw).Msg("resFac output")
+		log.Trace().Interface("res", res).Str("raw", raw).Msg("empty choices resFac output")
 
 		t.Run("raw", func(t *testing.T) {
 			tester(
@@ -151,7 +151,7 @@ func TestResponseWriter(t *testing.T) {
   }
 }`,
 				content))
-		log.Trace().Interface("res", res).Str("raw", raw).Msg("resFac output")
+		log.Trace().Interface("res", res).Str("raw", raw).Msg("buffered resFac output")
 
 		t.Run("raw", func(t *testing.T) {
 			tester(

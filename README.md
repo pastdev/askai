@@ -108,6 +108,20 @@ endpoints:
           conversational style.
         role: system
       model: mistral
+mcp_servers:
+  # this is the key used for the --mcp-server option on the completions command
+  jira:
+    # if true, skip all confirmation and immediatly invoke tools
+    auto_confirm: false
+    # if true, the default value of confirmation will be "Y", but user will
+    # still be prompted for confirmation for each tool invocation
+    confirm_default_yes: true
+    # unique name among mcp servers, should match key, but not required to. this
+    # value will be used to prefix all functions provided by this server to
+    # prevent function name collisions when using multiple mcp servers
+    name: jira
+    # the mcp server url. currently only http servers are supported
+    url: "https://mcp.atlassian.com/v1/forge/mcp"
 ~~~
 
 More options are available, see the `Config` type in the `askai` package for details.

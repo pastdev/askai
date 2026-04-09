@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 	"github.com/pastdev/askai/pkg/log"
+	"github.com/pastdev/askai/pkg/mcp"
 )
 
 var ExampleConfig = `---
@@ -23,11 +25,25 @@ endpoints:
   codestral:
     api_type: OPEN_AI
     base_url: http://172.22.144.2:11434/v1
+mcp_servers:
+  jira:
+    # if true, skip all confirmation and immediatly invoke tools
+    auto_confirm: false
+    # if true, the default value of confirmation will be "Y", but user will
+	# still be prompted for confirmation for each tool invocation
+	confirm_default_yes: true
+	# unique name among mcp servers, should match key, but not required to. this
+	# value will be used to prefix all functions provided by this server to
+	# prevent function name collisions when using multiple mcp servers
+    name: jira
+	# the mcp server url. currently only http servers are supported
+	url: "https://mcp.atlassian.com/v1/forge/mcp"
 `
 
 type Config struct {
 	Endpoints       map[string]EndpointConfig `json:"endpoints" yaml:"endpoints"`
 	DefaultEndpoint string                    `json:"default_endpoint" yaml:"default_endpoint"`
+	McpServers      map[string]McpConfig      `json:"mcp_servers" yaml:"mcp_servers"`
 }
 
 // EndpointConfig is a configuration of a client.
@@ -41,6 +57,21 @@ type EndpointConfig struct {
 	ImageDefaults          *openai.ImageGenerateParams     `json:"image_defaults" yaml:"image_defaults"`
 	InsecureSkipTLS        bool                            `json:"insecure_skip_tls" yaml:"insecure_skip_tls"`
 	OrgID                  string                          `json:"org_id" yaml:"org_id"`
+}
+
+type McpConfig struct {
+	// If true, tool call confirmation will be skipped, instead logging the
+	// call at info level.
+	AutoConfirm bool `json:"auto_confirm" yaml:"auto_confirm"`
+	// If true, the default value for tool confirmation will be yes. This is the
+	// value that will be used if the user confirms with an empty response, but
+	// confirmation is still required.
+	ConfirmDefaultYes bool `json:"confirm_default_yes" yaml:"confirm_default_yes"`
+	// A name to prefix each tool name with in order to prevent name collisions
+	// when multiple mcp's are in use.
+	Name string `json:"name" yaml:"name"`
+	// The url of the mcp server.
+	URL string `json:"url" yaml:"url"`
 }
 
 type loggingTransport struct {
@@ -61,6 +92,15 @@ func (c *Config) EndpointConfig(endpoint string) (*EndpointConfig, error) {
 	}
 
 	return &clientCfg, nil
+}
+
+func (c *Config) McpConfig(mcp string) (*McpConfig, error) {
+	cfg, ok := c.McpServers[mcp]
+	if !ok {
+		return nil, fmt.Errorf("mcp server %s not configured", mcp)
+	}
+
+	return &cfg, nil
 }
 
 func (c *EndpointConfig) NewHTTPClient() *http.Client {
@@ -112,6 +152,20 @@ func (c *EndpointConfig) NewClient() openai.Client {
 		opts = append(opts, option.WithOrganization(c.OrgID))
 	}
 	return openai.NewClient(opts...)
+}
+
+func (c *McpConfig) NewMcpClient(ctx context.Context) (*mcp.Client, error) {
+	mcp, err := mcp.NewClient(
+		ctx,
+		c.Name,
+		c.URL,
+		mcp.WithAutoConfirm(c.AutoConfirm),
+		mcp.WithConfirmDefaultYes(c.ConfirmDefaultYes))
+	if err != nil {
+		return nil, fmt.Errorf("new mcp client: %w", err)
+	}
+
+	return mcp, nil
 }
 
 func (s *loggingTransport) RoundTrip(r *http.Request) (*http.Response, error) {

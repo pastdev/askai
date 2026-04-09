@@ -23,6 +23,22 @@ type Config struct {
 	endpoint     string
 }
 
+func (c *Config) AddConfigCommandTo(root *cobra.Command) {
+	c.configSource.AddSubCommandTo(
+		root,
+		cobracfg.WithConfigCommandOutput(
+			"endpoints",
+			func(w io.Writer, cfg *pkgcfg.Config) error {
+				for endpoint := range cfg.Endpoints {
+					_, err := fmt.Fprintln(w, endpoint)
+					if err != nil {
+						return fmt.Errorf("print: %w", err)
+					}
+				}
+				return nil
+			}))
+}
+
 func (c *Config) Config() (*pkgcfg.Config, error) {
 	cfg, err := c.configSource.Config()
 	if err != nil {
@@ -39,26 +55,24 @@ func (c *Config) EndpointConfig() (*pkgcfg.EndpointConfig, error) {
 
 	endpoint, err := cfg.EndpointConfig(c.endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("endpointconfig client config: %w", err)
+		return nil, fmt.Errorf("endpointconfig named config: %w", err)
 	}
 
 	return endpoint, nil
 }
 
-func (c *Config) AddConfigCommandTo(root *cobra.Command) {
-	c.configSource.AddSubCommandTo(
-		root,
-		cobracfg.WithConfigCommandOutput(
-			"endpoints",
-			func(w io.Writer, cfg *pkgcfg.Config) error {
-				for endpoint := range cfg.Endpoints {
-					_, err := fmt.Fprintln(w, endpoint)
-					if err != nil {
-						return fmt.Errorf("print: %w", err)
-					}
-				}
-				return nil
-			}))
+func (c *Config) McpConfig(name string) (*pkgcfg.McpConfig, error) {
+	cfg, err := c.Config()
+	if err != nil {
+		return nil, fmt.Errorf("mcpconfig load config: %w", err)
+	}
+
+	mcp, err := cfg.McpConfig(name)
+	if err != nil {
+		return nil, fmt.Errorf("mcpconfig named config: %w", err)
+	}
+
+	return mcp, nil
 }
 
 func AddConfig(root *cobra.Command) *Config {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/openai/openai-go/v3"
 	"github.com/pastdev/askai/pkg/log"
+	"github.com/pastdev/askai/pkg/mcp"
 )
 
 type Conversation interface {
@@ -20,6 +21,7 @@ func HandleBufferResponse(
 	client openai.Client,
 	req openai.ChatCompletionNewParams,
 	writer ResponseWriter,
+	mcps ...*mcp.Client,
 ) error {
 	err := writer.WriteRequest(req)
 	if err != nil {
@@ -33,7 +35,7 @@ func HandleBufferResponse(
 
 	log.Debug().Interface("resp", resp).Msg("before invoking tool")
 	if len(resp.Choices[0].Message.ToolCalls) > 0 {
-		err = handleToolCalls(ctx, client, req, resp, false, writer)
+		err = handleToolCalls(ctx, client, req, resp, false, writer, mcps...)
 		if err != nil {
 			return fmt.Errorf("handle tool calls: %w", err)
 		}
@@ -54,6 +56,7 @@ func handleToolCalls(
 	resp *openai.ChatCompletion,
 	stream bool,
 	writer ResponseWriter,
+	mcps ...*mcp.Client,
 ) error {
 	toolCalls := resp.Choices[0].Message.ToolCalls
 	toolCallCompletionMessages := make([]openai.ChatCompletionMessageParamUnion, 0, len(toolCalls))
@@ -65,39 +68,62 @@ func handleToolCalls(
 		if toolCall.Function.Arguments != "" {
 			args = append(args, toolCall.Function.Arguments)
 		}
-		// prolly wanna have a whitelist here. not sure if openai api has any
-		// safety guarantees, prolly not. ai _could_ just respond with a function
-		// not in the list like rm --rf /. for now though, i am going to ignore
-		// this and revisit when i have a more concrete case for using tools
-		//   https://github.com/pastdev/askai/issues/4
-		//nolint: gosec
-		cmd := exec.CommandContext(ctx, toolCall.Function.Name, args...)
-		outBuf := &bytes.Buffer{}
-		errBuf := &bytes.Buffer{}
-		cmd.Stdout = outBuf
-		if log.Trace().Enabled() {
-			// may need to loop over lines writing to log to avoid large buffer, but
-			// for now, lets just do the _easy_ thing
-			cmd.Stderr = errBuf
-		}
-		err := cmd.Run()
-		log.Trace().
-			Err(err).
-			Str("stderr", errBuf.String()).
-			Str("stdout", outBuf.String()).
-			Msg("tool call complete")
-		if err != nil {
-			return fmt.Errorf("tool_call: %w", err)
+
+		isMCP := false
+		for _, mcp := range mcps {
+			log.Debug().
+				Str("mcp", mcp.Name()).
+				Str("toolCall", toolCall.Function.Name).
+				Msg("check mcp for function support")
+			if !mcp.Supports(toolCall.Function.Name) {
+				continue
+			}
+
+			resp, err := mcp.ChatCompletionToolsCall(ctx, toolCall)
+			if err != nil {
+				return fmt.Errorf("mcp tool call: %w", err)
+			}
+
+			toolCallCompletionMessages = append(toolCallCompletionMessages, resp)
+
+			isMCP = true
 		}
 
-		toolCallCompletionMessages = append(
-			toolCallCompletionMessages,
-			openai.ToolMessage(outBuf.String(), toolCall.ID))
+		if !isMCP {
+			// prolly wanna have a whitelist here. not sure if openai api has any
+			// safety guarantees, prolly not. ai _could_ just respond with a function
+			// not in the list like rm --rf /. for now though, i am going to ignore
+			// this and revisit when i have a more concrete case for using tools
+			//   https://github.com/pastdev/askai/issues/4
+			//nolint: gosec
+			cmd := exec.CommandContext(ctx, toolCall.Function.Name, args...)
+			outBuf := &bytes.Buffer{}
+			errBuf := &bytes.Buffer{}
+			cmd.Stdout = outBuf
+			if log.Trace().Enabled() {
+				// may need to loop over lines writing to log to avoid large buffer, but
+				// for now, lets just do the _easy_ thing
+				cmd.Stderr = errBuf
+			}
+			err := cmd.Run()
+			log.Trace().
+				Err(err).
+				Str("stderr", errBuf.String()).
+				Str("stdout", outBuf.String()).
+				Msg("tool call complete")
+			if err != nil {
+				return fmt.Errorf("tool_call: %w", err)
+			}
+
+			toolCallCompletionMessages = append(
+				toolCallCompletionMessages,
+				openai.ToolMessage(outBuf.String(), toolCall.ID))
+		}
 	}
 
 	req.Messages = append(req.Messages, resp.Choices[0].Message.ToParam())
 	req.Messages = append(req.Messages, toolCallCompletionMessages...)
-	err := Send(ctx, client, req, stream, writer)
+	err := Send(ctx, client, req, stream, writer, mcps...)
 	if err != nil {
 		return fmt.Errorf("tool call completion request: %w", err)
 	}
@@ -149,19 +175,54 @@ func HandleStreamResponse(
 	return nil
 }
 
+type combinedTools map[string]openai.ChatCompletionToolUnionParam
+
+func (c combinedTools) add(tools ...openai.ChatCompletionToolUnionParam) {
+	for _, tool := range tools {
+		if tool.OfFunction != nil {
+			c[tool.OfFunction.Function.Name] = tool
+		}
+	}
+}
+
+func (c combinedTools) asSlice() []openai.ChatCompletionToolUnionParam {
+	tools := make([]openai.ChatCompletionToolUnionParam, 0, len(c))
+	for _, tool := range c {
+		tools = append(tools, tool)
+	}
+	return tools
+}
+
 func Send(
 	ctx context.Context,
 	client openai.Client,
 	req openai.ChatCompletionNewParams,
 	stream bool,
 	writer ResponseWriter,
+	mcps ...*mcp.Client,
 ) error {
 	var err error
 	log.Debug().Bool("stream", stream).Interface("messages", req.Messages).Msg("the messages")
+
+	tools := combinedTools{}
+	tools.add(req.Tools...)
+	for _, mcp := range mcps {
+		log.Debug().Str("mcp", mcp.Name()).Msg("adding mcp tools")
+		t, err := mcp.ChatCompletionToolsList(ctx)
+		if err != nil {
+			return fmt.Errorf("add mcp tools: %w", err)
+		}
+
+		tools.add(t...)
+	}
+	req.Tools = tools.asSlice()
+
+	log.Debug().Interface("req", req).Msg("sending request")
+
 	if stream {
 		err = HandleStreamResponse(ctx, client, req, writer)
 	} else {
-		err = HandleBufferResponse(ctx, client, req, writer)
+		err = HandleBufferResponse(ctx, client, req, writer, mcps...)
 	}
 	if err != nil {
 		return fmt.Errorf("handle response: %w", err)
@@ -176,6 +237,7 @@ func SendReply(
 	reply openai.ChatCompletionNewParams,
 	stream bool,
 	writer ResponseWriter,
+	mcp ...*mcp.Client,
 ) error {
 	req, err := conversation.Continue(reply)
 	if err != nil {
@@ -183,7 +245,7 @@ func SendReply(
 	}
 
 	buf := NewResponseWriterContentBuffer(writer)
-	err = Send(ctx, client, req, stream, buf)
+	err = Send(ctx, client, req, stream, buf, mcp...)
 	if err != nil {
 		return fmt.Errorf("send: %w", err)
 	}

@@ -3,10 +3,9 @@ package version
 import (
 	"fmt"
 
+	"github.com/pastdev/askai/pkg/version"
 	"github.com/spf13/cobra"
 )
-
-var version = "0.0.0"
 
 func New() *cobra.Command {
 	return &cobra.Command{
@@ -14,7 +13,7 @@ func New() *cobra.Command {
 		Short: "Display askai version",
 		//nolint: revive // command part of the implementation signature
 		Run: func(command *cobra.Command, args []string) {
-			fmt.Printf("Version: %s\n", version)
+			fmt.Printf("Version: %s\n", version.Version())
 		},
 	}
 }
