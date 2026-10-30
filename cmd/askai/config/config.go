@@ -81,15 +81,15 @@ func AddConfig(root *cobra.Command) *Config {
 				Sources: []cfgldr.SourceLoader{
 					cfgldr.DirSource{
 						Path:      SystemConfigDir,
-						Unmarshal: yamlValueTemplateUnmarshal(),
+						Unmarshal: cfgldr.YamlValueTemplateUnmarshal(nil),
 					},
 					cfgldr.DirSource{
 						Path:      UserConfigDir,
-						Unmarshal: yamlValueTemplateUnmarshal(),
+						Unmarshal: cfgldr.YamlValueTemplateUnmarshal(nil),
 					},
 					cfgldr.DirSource{
 						Path:      DirectoryConfigDir,
-						Unmarshal: yamlValueTemplateUnmarshal(),
+						Unmarshal: cfgldr.YamlValueTemplateUnmarshal(nil),
 					},
 				},
 				Convert: jsonConvert,
@@ -138,10 +138,4 @@ func jsonConvert(merged any, cfg *pkgcfg.Config) error {
 		return fmt.Errorf("json unmarshal: %w", err)
 	}
 	return nil
-}
-
-// yamlValueTemplateUnmarshal unmarshals yaml then processes each _value_
-// individually through the go template engine.
-func yamlValueTemplateUnmarshal() cfgldr.UnmarshalFunc {
-	return cfgldr.YamlValueTemplateUnmarshal(cfgldr.NewTemplate(cfgldr.DefaultFuncMap()))
 }

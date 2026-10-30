@@ -18,7 +18,7 @@ func TestConfigLoader(t *testing.T) {
 				Sources: []cfgldr.SourceLoader{
 					cfgldr.RawSource{
 						Data:      []byte(cfgYaml),
-						Unmarshal: yamlValueTemplateUnmarshal(),
+						Unmarshal: cfgldr.YamlValueTemplateUnmarshal(nil),
 					},
 				},
 				Convert: jsonConvert,
