@@ -15,10 +15,13 @@ func TestConfigLoader(t *testing.T) {
 	tester := func(t *testing.T, cfgYaml string, expected *pkgcfg.Config) {
 		cfgLoader := cobracfg.ConfigLoader[pkgcfg.Config]{
 			DefaultSources: cfgldr.Sources[pkgcfg.Config]{
-				cfgldr.RawSource[pkgcfg.Config]{
-					Data:      []byte(cfgYaml),
-					Unmarshal: YamlToJSONWithValueTemplateUnmarshal[pkgcfg.Config](),
+				Sources: []cfgldr.SourceLoader{
+					cfgldr.RawSource{
+						Data:      []byte(cfgYaml),
+						Unmarshal: yamlValueTemplateUnmarshal(),
+					},
 				},
+				Convert: jsonConvert,
 			},
 		}
 		actual, err := cfgLoader.Config()
@@ -111,6 +114,23 @@ endpoints:
 							},
 							Model: "grok-4-fast-non-reasoning",
 						},
+					},
+				},
+			})
+	})
+
+	t.Run("templated value", func(t *testing.T) {
+		t.Setenv("HOME", "/home/askai")
+		tester(t,
+			`---
+endpoints:
+  foo:
+    base_url: '{{ home }}/url'
+`,
+			&pkgcfg.Config{
+				Endpoints: map[string]pkgcfg.EndpointConfig{
+					"foo": {
+						BaseURL: "/home/askai/url",
 					},
 				},
 			})
