@@ -1,6 +1,6 @@
 module github.com/pastdev/askai
 
-go 1.26.2
+go 1.27.3
 
 require (
 	dario.cat/mergo v1.0.2
@@ -10,7 +10,9 @@ require (
 	github.com/pastdev/configloader v1.1.0
 	github.com/pastdev/open v1.0.1
 	github.com/pkoukk/tiktoken-go v0.1.8
+	github.com/rs/zerolog v1.35.0
 	github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -27,6 +29,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.6.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
@@ -50,10 +53,4 @@ require (
 	golang.org/x/sys v0.43.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-)
-
-require (
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/rs/zerolog v1.35.0
-	github.com/spf13/pflag v1.0.10
 )
