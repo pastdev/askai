@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	yaml2json "github.com/invopop/yaml"
 	pkgcfg "github.com/pastdev/askai/pkg/config"
 	cobracfg "github.com/pastdev/configloader/pkg/cobra"
 	cfgldr "github.com/pastdev/configloader/pkg/config"
@@ -79,18 +78,21 @@ func AddConfig(root *cobra.Command) *Config {
 	cfg := Config{
 		configSource: cobracfg.ConfigLoader[pkgcfg.Config]{
 			DefaultSources: cfgldr.Sources[pkgcfg.Config]{
-				cfgldr.DirSource[pkgcfg.Config]{
-					Path:      SystemConfigDir,
-					Unmarshal: YamlToJSONWithValueTemplateUnmarshal[pkgcfg.Config](),
+				Sources: []cfgldr.SourceLoader{
+					cfgldr.DirSource{
+						Path:      SystemConfigDir,
+						Unmarshal: cfgldr.YamlValueTemplateUnmarshal(nil),
+					},
+					cfgldr.DirSource{
+						Path:      UserConfigDir,
+						Unmarshal: cfgldr.YamlValueTemplateUnmarshal(nil),
+					},
+					cfgldr.DirSource{
+						Path:      DirectoryConfigDir,
+						Unmarshal: cfgldr.YamlValueTemplateUnmarshal(nil),
+					},
 				},
-				cfgldr.DirSource[pkgcfg.Config]{
-					Path:      UserConfigDir,
-					Unmarshal: YamlToJSONWithValueTemplateUnmarshal[pkgcfg.Config](),
-				},
-				cfgldr.DirSource[pkgcfg.Config]{
-					Path:      DirectoryConfigDir,
-					Unmarshal: YamlToJSONWithValueTemplateUnmarshal[pkgcfg.Config](),
-				},
+				Convert: jsonConvert,
 			},
 		},
 	}
@@ -110,12 +112,12 @@ func AddConfig(root *cobra.Command) *Config {
 			}))
 
 	cfg.configSource.PersistentFlags(root).FileSourceVarP(
-		cfgldr.YamlUnmarshal[pkgcfg.Config](),
+		cfgldr.YamlUnmarshal(),
 		"config",
 		"c",
 		"location of one or more config files")
 	cfg.configSource.PersistentFlags(root).DirSourceVarP(
-		cfgldr.YamlUnmarshal[pkgcfg.Config](),
+		cfgldr.YamlUnmarshal(),
 		"config-dir",
 		"d",
 		"location of one or more config directories")
@@ -124,33 +126,16 @@ func AddConfig(root *cobra.Command) *Config {
 	return &cfg
 }
 
-// YamlToJSONWithValueTemplateUnmarshal is an Unmarshal function that converts
-// yaml to json, then unmarshals using the json unmarshal so that json tags are
-// respected, then processes each _value_ individually through the go template
-// engine then reserializes the result to json before unmarshaling into T.
-func YamlToJSONWithValueTemplateUnmarshal[T any]() func(b []byte, cfg *T) error {
-	return func(b []byte, cfg *T) error {
-		var valueMap any
-		err := yaml2json.Unmarshal(b, &valueMap)
-		if err != nil {
-			return fmt.Errorf("yamlunmarshal to valueMap: %w", err)
-		}
-
-		// walk the map and template each value
-		err = cfgldr.Walk(cfgldr.NewTemplate(cfgldr.DefaultFuncMap()), valueMap)
-		if err != nil {
-			return fmt.Errorf("yamlunmarshal walk valueMap: %w", err)
-		}
-
-		data, err := json.Marshal(valueMap)
-		if err != nil {
-			return fmt.Errorf("yamlunmarshal from valueMap: %w", err)
-		}
-
-		err = json.Unmarshal(data, cfg)
-		if err != nil {
-			return fmt.Errorf("yamlunmarshal to type: %w", err)
-		}
-		return nil
+// jsonConvert converts the merged document into cfg using the json
+// marshaler so that json tags are respected (required by the openai types).
+func jsonConvert(merged any, cfg *pkgcfg.Config) error {
+	data, err := json.Marshal(merged)
+	if err != nil {
+		return fmt.Errorf("json marshal: %w", err)
 	}
+	err = json.Unmarshal(data, cfg)
+	if err != nil {
+		return fmt.Errorf("json unmarshal: %w", err)
+	}
+	return nil
 }

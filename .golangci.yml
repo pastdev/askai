@@ -29,6 +29,11 @@ linters:
     generated: lax
     presets:
       - comments
+    rules:
+      # tests intentionally repeat literals so expectations read in place
+      - path: _test\.go
+        linters:
+          - goconst
     paths:
       - third_party$
       - builtin$
